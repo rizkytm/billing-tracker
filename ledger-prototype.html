@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ledger — Prototype</title>
+<style>
+:root {
+  --ink: #10131A;
+  --paper: #EDEFF3;
+  --paper-dim: #B7BCC8;
+  --panel: #1A1F2B;
+  --panel-raised: #212736;
+  --line: #2C3340;
+  --good: #35D399;
+  --good-dim: #1E5C46;
+  --warn: #F2A93B;
+  --danger: #E8607A;
+  --radius: 10px;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: 'Sora', 'Space Grotesk', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background: var(--ink); color: var(--paper); font-family: var(--body); -webkit-font-smoothing: antialiased; }
+button { font-family: var(--body); cursor: pointer; }
+input { font-family: var(--body); }
+.shell { max-width: 480px; margin: 0 auto; padding: 28px 20px 60px; }
+.masthead { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:20px; }
+.masthead h1 { font-family: var(--display); font-size:20px; letter-spacing:.02em; margin:0; font-weight:600; }
+.masthead .tag { font-family: var(--mono); font-size:11px; color: var(--paper-dim); text-transform:uppercase; letter-spacing:.08em; }
+.signout-btn { background:none; border:1px solid var(--line); color:var(--paper-dim); border-radius:6px; padding:6px 10px; font-size:12px; }
+.statement { background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); padding:20px; position:relative; margin-bottom:20px; }
+.statement::before, .statement::after { content:''; position:absolute; left:0; right:0; height:1px; background-image: linear-gradient(90deg, var(--line) 60%, transparent 0%); background-size:10px 1px; background-repeat:repeat-x; }
+.statement::before { top:0; } .statement::after { bottom:0; }
+.statement-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-family: var(--mono); font-size:13px; }
+.statement-row .label { color: var(--paper-dim); font-size:12px; }
+.statement-row.total { border-top:1px dashed var(--line); margin-top:8px; padding-top:12px; font-size:16px; }
+.statement-row.total .value.positive { color: var(--good); }
+.statement-row.total .value.negative { color: var(--danger); }
+.balance-input-row { display:flex; gap:8px; margin-top:14px; }
+.balance-input-row input { flex:1; background: var(--ink); border:1px solid var(--line); color:var(--paper); border-radius:6px; padding:10px 12px; font-family: var(--mono); font-size:14px; }
+.balance-input-row button, .primary-btn { background: var(--good); color:#06231A; border:none; border-radius:6px; padding:10px 16px; font-weight:600; font-size:13px; }
+.clear-btn { background:none !important; border:1px solid var(--line) !important; color: var(--paper-dim) !important; font-weight:500 !important; }
+.clear-btn:hover { color: var(--danger) !important; border-color: var(--danger) !important; }
+.month-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; font-family: var(--mono); }
+.month-nav button { background:none; border:1px solid var(--line); color:var(--paper-dim); border-radius:6px; padding:4px 10px; }
+.month-nav .month-label { font-family: var(--display); font-size:15px; font-weight:600; }
+.bill-list { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
+.bill-item { display:flex; align-items:center; gap:10px; background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); padding:12px 14px; transition:opacity .15s; }
+.bill-item.paid { opacity:.55; }
+.bill-item.inactive { opacity:.4; border-style:dashed; }
+.bill-check { width:20px; height:20px; border-radius:5px; border:1.5px solid var(--paper-dim); background:transparent; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--good); font-size:13px; }
+.bill-item.paid .bill-check { background: var(--good-dim); border-color: var(--good); }
+.bill-item.inactive .bill-check { cursor:not-allowed; }
+.bill-info { flex:1; min-width:0; }
+.bill-name { font-size:14px; font-weight:500; }
+.bill-item.paid .bill-name { text-decoration: line-through; text-decoration-color: var(--paper-dim); }
+.bill-meta { font-family: var(--mono); font-size:11px; color: var(--paper-dim); margin-top:2px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.due-normal { color: var(--paper-dim); }
+.due-today { color: var(--warn); font-weight:600; }
+.due-overdue { color: var(--danger); font-weight:600; }
+.badge-inactive { background: var(--panel-raised); border:1px solid var(--line); color: var(--paper-dim); font-size:10px; padding:1px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:.04em; }
+.sort-bar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+.sort-bar select { background: var(--panel); border:1px solid var(--line); color:var(--paper); border-radius:6px; padding:7px 10px; font-size:12px; font-family: var(--mono); }
+.sort-dir-btn { background: var(--panel); border:1px solid var(--line); color:var(--paper-dim); border-radius:6px; padding:7px 10px; font-size:12px; font-family: var(--mono); }
+.sort-dir-btn:hover { color: var(--paper); }
+.bill-amount { font-family: var(--mono); font-size:14px; font-weight:600; white-space:nowrap; }
+.bill-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+.icon-btn { background:none; border:none; color:var(--paper-dim); font-size:14px; line-height:1; padding:6px; border-radius:5px; }
+.icon-btn:hover { color: var(--paper); background: var(--panel-raised); }
+.icon-btn.remove-btn:hover { color: var(--danger); }
+.icon-btn.active-toggle.is-active:hover { color: var(--warn); }
+.icon-btn.active-toggle.is-inactive { color: var(--good); }
+
+.bill-edit-row { background: var(--panel-raised); border:1px solid var(--line); border-radius: var(--radius); padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+.bill-edit-row .edit-grid { display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; }
+.bill-edit-row input { background: var(--ink); border:1px solid var(--line); color:var(--paper); border-radius:6px; padding:8px 10px; font-size:13px; width:100%; }
+.bill-edit-row .checkbox-row { font-size:12px; }
+.bill-edit-actions { display:flex; gap:8px; justify-content:flex-end; }
+.bill-edit-actions button { font-size:12px; padding:7px 12px; border-radius:6px; }
+.btn-cancel { background:none; border:1px solid var(--line); color:var(--paper-dim); }
+.btn-save { background: var(--good); border:none; color:#06231A; font-weight:600; }
+.empty-state { text-align:center; color:var(--paper-dim); font-size:13px; padding:30px 10px; border:1px dashed var(--line); border-radius: var(--radius); }
+.add-form { background: var(--panel-raised); border:1px solid var(--line); border-radius: var(--radius); padding:16px; margin-bottom:24px; }
+.add-form h2 { font-family: var(--display); font-size:14px; margin:0 0 12px; color:var(--paper-dim); text-transform:uppercase; letter-spacing:.06em; }
+.form-grid { display:grid; grid-template-columns:1fr; gap:10px; }
+.form-row-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-grid input { background: var(--ink); border:1px solid var(--line); color:var(--paper); border-radius:6px; padding:10px 12px; font-size:14px; width:100%; }
+.checkbox-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--paper-dim); }
+.tabs { display:flex; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+.tabs button { background:none; border:none; color:var(--paper-dim); padding:10px 4px; margin-right:18px; font-size:13px; border-bottom:2px solid transparent; }
+.tabs button.active { color:var(--paper); border-bottom-color:var(--good); }
+.history-row { display:grid; grid-template-columns:90px 1fr 100px; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-family: var(--mono); font-size:12px; }
+.history-bar-track { background: var(--ink); border-radius:4px; height:8px; overflow:hidden; }
+.history-bar-fill { background: var(--good); height:100%; }
+.note { font-size:11px; color: var(--paper-dim); text-align:center; margin-top:18px; font-family: var(--mono); }
+.field-error { color: var(--danger); font-size:11px; margin-top:-4px; }
+.input-invalid { border-color: var(--danger) !important; }
+.modal-overlay { position:fixed; inset:0; background:rgba(8,10,14,.6); display:flex; align-items:center; justify-content:center; z-index:50; }
+.modal-card { background: var(--panel-raised); border:1px solid var(--line); border-radius: var(--radius); padding:20px; width:100%; max-width:320px; }
+.modal-card h3 { font-family: var(--display); font-size:15px; margin:0 0 8px; font-weight:600; }
+.modal-card p { font-size:13px; color: var(--paper-dim); margin:0 0 18px; line-height:1.5; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; }
+.modal-actions button { font-size:13px; padding:8px 14px; border-radius:6px; }
+.btn-modal-cancel { background:none; border:1px solid var(--line); color:var(--paper-dim); }
+.btn-modal-danger { background: var(--danger); border:none; color:#3A0A14; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="masthead">
+    <div>
+      <h1>Ledger</h1>
+      <div class="tag">pencatat tagihan bulanan</div>
+    </div>
+    <button class="signout-btn">Keluar</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="bulan">Bulan Ini</button>
+    <button class="tab-btn" data-tab="riwayat">Riwayat</button>
+  </div>
+
+  <div id="panel-bulan">
+    <div class="month-nav">
+      <button id="prevMonth">&larr;</button>
+      <span class="month-label" id="monthLabel">Juli 2026</span>
+      <button id="nextMonth">&rarr;</button>
+    </div>
+
+    <div class="statement">
+      <div class="statement-row"><span class="label">Total tagihan bulan ini</span><span class="value" id="stTotal">Rp 0</span></div>
+      <div class="statement-row"><span class="label">Sudah dibayar</span><span class="value" style="color:var(--good)" id="stPaid">Rp 0</span></div>
+      <div class="statement-row"><span class="label">Belum dibayar</span><span class="value" style="color:var(--warn)" id="stUnpaid">Rp 0</span></div>
+      <div class="balance-input-row">
+        <input id="balanceInput" type="number" inputmode="numeric" placeholder="Sisa uang sekarang (Rp)" />
+        <button id="saveBalance">Simpan</button>
+      </div>
+      <div class="statement-row total" id="estRow" style="display:none">
+        <span class="label">Estimasi sisa setelah bayar</span>
+        <span class="value" id="stEst">Rp 0</span>
+      </div>
+      <div id="clearRow" style="display:none; margin-top:10px; text-align:right">
+        <button class="clear-btn" id="clearBalance" style="border-radius:6px; padding:7px 14px; font-size:12px;">Clear</button>
+      </div>
+    </div>
+
+    <div class="sort-bar">
+      <select id="sortField">
+        <option value="none">Urutan asli</option>
+        <option value="name">Nama</option>
+        <option value="date">Tanggal jatuh tempo</option>
+        <option value="amount">Nilai</option>
+      </select>
+      <button class="sort-dir-btn" id="sortDir" data-dir="asc">↑ Asc</button>
+    </div>
+    <div class="bill-list" id="billList"></div>
+
+    <div class="add-form">
+      <h2>Tambah tagihan</h2>
+      <div class="form-grid">
+        <input id="fName" type="text" placeholder="Nama tagihan (mis. Listrik, Internet, Cicilan)" />
+        <div class="field-error" id="errFName"></div>
+        <div class="form-row-split">
+          <div>
+            <input id="fAmount" type="number" inputmode="numeric" placeholder="Nominal (Rp)" />
+            <div class="field-error" id="errFAmount"></div>
+          </div>
+          <div>
+            <input id="fDue" type="number" min="1" max="31" placeholder="Tanggal (opsional, 1-31)" />
+            <div class="field-error" id="errFDue"></div>
+          </div>
+        </div>
+        <label class="checkbox-row"><input id="fRecurring" type="checkbox" checked style="width:auto" /> Tagihan rutin (muncul otomatis tiap bulan)</label>
+        <button class="primary-btn" id="addBillBtn">Tambah</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-riwayat" style="display:none"></div>
+
+  <div class="note">Prototype statis — data contoh, belum tersambung ke Supabase</div>
+</div>
+
+<div id="confirmModal" style="display:none"></div>
+
+<script>
+let bills = [
+  { id:1, name:'Listrik PLN', amount:450000, due_day:15, is_paid:true, is_active:true, is_recurring:true },
+  { id:2, name:'Internet Indihome', amount:350000, due_day:21, is_paid:false, is_active:true, is_recurring:true },
+  { id:3, name:'Cicilan Motor', amount:900000, due_day:28, is_paid:false, is_active:true, is_recurring:true },
+  { id:4, name:'Langganan Netflix', amount:65000, due_day:null, is_paid:false, is_active:false, is_recurring:true },
+  { id:5, name:'Uang Bulanan Sekolah', amount:500000, due_day:10, is_paid:false, is_active:true, is_recurring:true },
+];
+let currentBalance = null;
+let nextId = 6;
+let editingId = null;
+let sortField = localStorage.getItem('ledger_sort_field') || 'none';
+let sortDir = localStorage.getItem('ledger_sort_dir') || 'asc';
+let pendingDeleteId = null;
+
+const rupiah = n => Number(n||0).toLocaleString('id-ID', { style:'currency', currency:'IDR', maximumFractionDigits:0 });
+const todayDay = new Date().getDate();
+
+function validateBill(name, amountRaw, dueRaw) {
+  const errors = { name: '', amount: '', due: '' };
+  if (!name || !name.trim()) errors.name = 'Nama tagihan tidak boleh kosong.';
+  const amount = Number(amountRaw);
+  if (amountRaw === '' || isNaN(amount) || amount <= 0) errors.amount = 'Nominal harus lebih dari 0.';
+  if (dueRaw !== '' && dueRaw !== null && dueRaw !== undefined) {
+    const due = Number(dueRaw);
+    if (isNaN(due) || due < 1 || due > 31 || !Number.isInteger(due)) errors.due = 'Tanggal harus angka 1-31.';
+  }
+  return errors;
+}
+
+function showErrors(prefix, errors) {
+  document.getElementById(prefix + 'Name').textContent = errors.name;
+  document.getElementById(prefix + 'Amount').textContent = errors.amount;
+  document.getElementById(prefix + 'Due').textContent = errors.due;
+  document.getElementById(prefix === 'errF' ? 'fName' : 'editName').classList.toggle('input-invalid', !!errors.name);
+  document.getElementById(prefix === 'errF' ? 'fAmount' : 'editAmount').classList.toggle('input-invalid', !!errors.amount);
+  document.getElementById(prefix === 'errF' ? 'fDue' : 'editDue').classList.toggle('input-invalid', !!errors.due);
+}
+
+function hasErrors(errors) {
+  return !!(errors.name || errors.amount || errors.due);
+}
+
+function dueStatusClass(due_day) {
+  if (!due_day) return 'due-normal';
+  if (due_day === todayDay) return 'due-today';
+  if (due_day < todayDay) return 'due-overdue';
+  return 'due-normal';
+}
+
+function dueLabel(b) {
+  if (!b.due_day) return 'tanpa tanggal tetap';
+  const status = dueStatusClass(b.due_day);
+  const suffix = status === 'due-today' ? ' · jatuh tempo hari ini' : status === 'due-overdue' ? ' · sudah lewat jatuh tempo' : '';
+  return 'jatuh tempo tgl ' + b.due_day + suffix;
+}
+
+function getSortedBills() {
+  const copy = [...bills];
+  if (sortField === 'none') return copy;
+  copy.sort((a, b) => {
+    let av, bv;
+    if (sortField === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
+    else if (sortField === 'amount') { av = a.amount; bv = b.amount; }
+    else if (sortField === 'date') {
+      av = a.due_day ?? 999; bv = b.due_day ?? 999;
+    }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return copy;
+}
+
+function billRowHtml(b) {
+  if (editingId === b.id) {
+    return `
+      <div class="bill-edit-row" data-id="${b.id}">
+        <div class="edit-grid">
+          <div>
+            <input type="text" id="editName" value="${b.name}" placeholder="Nama tagihan" />
+            <div class="field-error" id="editErrName"></div>
+          </div>
+          <div>
+            <input type="number" id="editAmount" value="${b.amount}" placeholder="Nominal" />
+            <div class="field-error" id="editErrAmount"></div>
+          </div>
+          <div>
+            <input type="number" id="editDue" min="1" max="31" value="${b.due_day ?? ''}" placeholder="Tgl (opsional)" />
+            <div class="field-error" id="editErrDue"></div>
+          </div>
+        </div>
+        <label class="checkbox-row"><input type="checkbox" id="editRecurring" ${b.is_recurring ? 'checked' : ''} style="width:auto" /> Tagihan rutin</label>
+        <div class="bill-edit-actions">
+          <button class="btn-cancel" data-cancel="${b.id}">Batal</button>
+          <button class="btn-save" data-save="${b.id}">Simpan</button>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="bill-item ${b.is_paid ? 'paid' : ''} ${!b.is_active ? 'inactive' : ''}" data-id="${b.id}">
+      <button class="bill-check" data-toggle="${b.id}" ${!b.is_active ? 'disabled' : ''}>${b.is_paid ? '✓' : ''}</button>
+      <div class="bill-info">
+        <div class="bill-name">${b.name}</div>
+        <div class="bill-meta">
+          <span class="${b.is_paid ? '' : dueStatusClass(b.due_day)}">${dueLabel(b)}</span>
+          ${!b.is_active ? '<span class="badge-inactive">nonaktif bulan ini</span>' : ''}
+        </div>
+      </div>
+      <div class="bill-amount">${rupiah(b.amount)}</div>
+      <div class="bill-actions">
+        <button class="icon-btn active-toggle ${b.is_active ? 'is-active' : 'is-inactive'}" data-active="${b.id}" title="${b.is_active ? 'Nonaktifkan bulan ini' : 'Aktifkan lagi'}">${b.is_active ? '⏸' : '▶'}</button>
+        <button class="icon-btn" data-edit="${b.id}" title="Edit">✎</button>
+        <button class="icon-btn remove-btn" data-remove="${b.id}" title="Hapus">×</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderBills() {
+  const list = document.getElementById('billList');
+  const sorted = getSortedBills();
+  list.innerHTML = sorted.length === 0
+    ? '<div class="empty-state">Belum ada tagihan bulan ini. Tambah lewat form di bawah.</div>'
+    : sorted.map(billRowHtml).join('');
+  renderStatement();
+}
+
+function renderStatement() {
+  const active = bills.filter(b => b.is_active);
+  const paid = active.filter(b=>b.is_paid).reduce((s,b)=>s+b.amount,0);
+  const unpaid = active.filter(b=>!b.is_paid).reduce((s,b)=>s+b.amount,0);
+  document.getElementById('stTotal').textContent = rupiah(paid+unpaid);
+  document.getElementById('stPaid').textContent = rupiah(paid);
+  document.getElementById('stUnpaid').textContent = rupiah(unpaid);
+  const estRow = document.getElementById('estRow');
+  const clearRow = document.getElementById('clearRow');
+  if (currentBalance !== null) {
+    estRow.style.display = 'flex';
+    clearRow.style.display = 'block';
+    const est = currentBalance - unpaid;
+    const val = document.getElementById('stEst');
+    val.textContent = rupiah(est);
+    val.className = 'value ' + (est >= 0 ? 'positive' : 'negative');
+  } else {
+    estRow.style.display = 'none';
+    clearRow.style.display = 'none';
+  }
+}
+
+function openConfirmModal(id) {
+  pendingDeleteId = id;
+  const bill = bills.find(b => b.id == id);
+  const modal = document.getElementById('confirmModal');
+  modal.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-card">
+        <h3>Hapus tagihan?</h3>
+        <p>"${bill.name}" akan dihapus permanen dan tidak bisa dikembalikan. Kalau cuma mau berhenti bulan ini, gunakan tombol nonaktifkan (⏸) saja.</p>
+        <div class="modal-actions">
+          <button class="btn-modal-cancel" id="modalCancel">Batal</button>
+          <button class="btn-modal-danger" id="modalConfirm">Hapus</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.style.display = 'block';
+}
+
+function closeConfirmModal() {
+  pendingDeleteId = null;
+  const modal = document.getElementById('confirmModal');
+  modal.style.display = 'none';
+  modal.innerHTML = '';
+}
+
+document.getElementById('confirmModal').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay' || e.target.id === 'modalCancel') closeConfirmModal();
+  if (e.target.id === 'modalConfirm') {
+    bills = bills.filter(x => x.id != pendingDeleteId);
+    closeConfirmModal();
+    renderBills();
+  }
+});
+
+document.getElementById('billList').addEventListener('click', e => {
+  const toggle = e.target.getAttribute('data-toggle');
+  const remove = e.target.getAttribute('data-remove');
+  const activeToggle = e.target.getAttribute('data-active');
+  const edit = e.target.getAttribute('data-edit');
+  const cancel = e.target.getAttribute('data-cancel');
+  const save = e.target.getAttribute('data-save');
+
+  if (toggle) {
+    const b = bills.find(x=>x.id==toggle);
+    if (b.is_active) { b.is_paid = !b.is_paid; renderBills(); }
+  }
+  if (remove) { openConfirmModal(remove); }
+  if (activeToggle) {
+    const b = bills.find(x=>x.id==activeToggle);
+    b.is_active = !b.is_active;
+    if (!b.is_active) b.is_paid = false;
+    renderBills();
+  }
+  if (edit) { editingId = Number(edit); renderBills(); }
+  if (cancel) { editingId = null; renderBills(); }
+  if (save) {
+    const nameVal = document.getElementById('editName').value;
+    const amountVal = document.getElementById('editAmount').value;
+    const dueVal = document.getElementById('editDue').value;
+    const errors = validateBill(nameVal, amountVal, dueVal);
+    if (hasErrors(errors)) { showErrors('editErr', errors); return; }
+    const b = bills.find(x=>x.id==save);
+    b.name = nameVal.trim();
+    b.amount = Number(amountVal);
+    b.due_day = dueVal ? Number(dueVal) : null;
+    b.is_recurring = document.getElementById('editRecurring').checked;
+    editingId = null;
+    renderBills();
+  }
+});
+
+document.getElementById('saveBalance').addEventListener('click', () => {
+  const v = Number(document.getElementById('balanceInput').value);
+  if (!isNaN(v) && document.getElementById('balanceInput').value !== '') { currentBalance = v; renderStatement(); }
+});
+
+document.getElementById('clearBalance').addEventListener('click', () => {
+  currentBalance = null;
+  document.getElementById('balanceInput').value = '';
+  renderStatement();
+});
+
+document.getElementById('sortField').addEventListener('change', e => {
+  sortField = e.target.value;
+  localStorage.setItem('ledger_sort_field', sortField);
+  renderBills();
+});
+
+document.getElementById('sortDir').addEventListener('click', () => {
+  sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  localStorage.setItem('ledger_sort_dir', sortDir);
+  const btn = document.getElementById('sortDir');
+  btn.textContent = sortDir === 'asc' ? '↑ Asc' : '↓ Desc';
+  renderBills();
+});
+
+document.getElementById('sortField').value = sortField;
+document.getElementById('sortDir').textContent = sortDir === 'asc' ? '↑ Asc' : '↓ Desc';
+
+document.getElementById('addBillBtn').addEventListener('click', () => {
+  const name = document.getElementById('fName').value;
+  const amount = document.getElementById('fAmount').value;
+  const due = document.getElementById('fDue').value;
+  const errors = validateBill(name, amount, due);
+  showErrors('errF', errors);
+  if (hasErrors(errors)) return;
+
+  bills.push({
+    id: nextId++,
+    name: name.trim(),
+    amount: Number(amount),
+    due_day: due ? Number(due) : null,
+    is_paid: false,
+    is_active: true,
+    is_recurring: document.getElementById('fRecurring').checked,
+  });
+  document.getElementById('fName').value = '';
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fDue').value = '';
+  showErrors('errF', { name:'', amount:'', due:'' });
+  renderBills();
+});
+
+const tabs = document.querySelectorAll('.tab-btn');
+tabs.forEach(btn => btn.addEventListener('click', () => {
+  tabs.forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const tab = btn.getAttribute('data-tab');
+  document.getElementById('panel-bulan').style.display = tab === 'bulan' ? 'block' : 'none';
+  document.getElementById('panel-riwayat').style.display = tab === 'riwayat' ? 'block' : 'none';
+  if (tab === 'riwayat') renderHistory();
+}));
+
+function renderHistory() {
+  const rows = [
+    { month:'Mei 2026', total:2100000, paid:2100000 },
+    { month:'Juni 2026', total:2200000, paid:1800000 },
+    { month:'Juli 2026', total: bills.reduce((s,b)=>s+b.amount,0), paid: bills.filter(b=>b.is_paid).reduce((s,b)=>s+b.amount,0) },
+  ];
+  const max = Math.max(...rows.map(r=>r.total), 1);
+  document.getElementById('panel-riwayat').innerHTML = rows.map(r => `
+    <div class="history-row">
+      <span>${r.month}</span>
+      <div class="history-bar-track"><div class="history-bar-fill" style="width:${(r.total/max*100)}%"></div></div>
+      <span style="text-align:right">${rupiah(r.paid)} / ${rupiah(r.total)}</span>
+    </div>
+  `).join('');
+}
+
+document.getElementById('prevMonth').addEventListener('click', () => {
+  document.getElementById('monthLabel').textContent = 'Juni 2026';
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  document.getElementById('monthLabel').textContent = 'Juli 2026';
+});
+
+renderBills();
+</script>
+</body>
+</html>
