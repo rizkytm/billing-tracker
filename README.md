@@ -6,11 +6,12 @@ Vue 3 + Supabase. PWA, deploy gratis di GitHub Pages.
 
 ## Fitur
 - Catat tagihan bulanan: nama, nominal, tanggal jatuh tempo (opsional), rutin atau sekali saja.
+- Tagihan sekali: pilih bulan target langsung dari form (tidak perlu navigasi dulu).
 - Checklist "sudah dibayar" per bulan — reset otomatis tiap bulan baru untuk tagihan rutin.
 - Nonaktifkan tagihan bulan ini tanpa menghapus (tombol ⏸), aktifkan lagi bulan berikutnya.
-- Edit tagihan langsung dari daftar (inline edit).
+- Edit tagihan langsung dari daftar (inline edit), termasuk ganti bulan target untuk tagihan sekali.
 - Urutkan tagihan berdasarkan nama, tanggal jatuh tempo, atau nilai.
-- Warna jatuh tempo: oranye = hari ini, merah = sudah lewat.
+- Warna jatuh tempo kontekstual: oranye = hari ini, merah = lewat jatuh tempo (bulan lalu = tidak dibayar), normal = bulan depan.
 - Input sisa uang saat ini → estimasi sisa setelah bayar semua yang belum lunas.
 - Riwayat bulan-bulan sebelumnya dengan progress bar persentase bayar.
 - Login pakai email/password atau Google OAuth.
@@ -70,7 +71,7 @@ npm run dev
 ## Struktur data (Supabase)
 
 - `bills` — definisi tagihan (nama, nominal, tanggal opsional, rutin/tidak, `archived`).
-- `bill_payments` — status per bulan per tagihan (`is_paid`, `is_active` untuk skip bulan ini).
+- `bill_payments` — status per bulan per tagihan (`is_paid`, `is_active` untuk skip bulan ini, `amount` bisa di-override per bulan).
 - `monthly_balance` — sisa uang yang kamu input per bulan, untuk kalkulasi estimasi.
 
 ## Roadmap
@@ -78,7 +79,7 @@ npm run dev
 ### Quick wins
 - [ ] **Notifikasi jatuh tempo** — push notification H-3 via Web Notifications API, delivered lewat SW yang sudah ada
 - [ ] **Kategori tagihan** — tag per tagihan (listrik, internet, cicilan, dll), filter di daftar. Tambah kolom `category` di `bills`
-- [ ] **Override nominal per bulan** — edit nominal di `bill_payments` tanpa ubah definisi tagihan (berguna kalau tagihan berubah tiap bulan)
+- [ ] **Override tagihan per bulan** — edit nama, nominal, dan tanggal jatuh tempo di `bill_payments` tanpa ubah definisi tagihan. Perlu tambah `name_override`, `due_day_override` di `bill_payments`. Tombol `≈` terpisah dari edit permanen (✎)
 - [ ] **Export CSV** — download riwayat sebagai spreadsheet, pure frontend
 - [ ] **Dark/light theme toggle** — CSS vars sudah bersih, tinggal flip
 
