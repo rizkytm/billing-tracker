@@ -9,7 +9,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['toggle', 'toggle-active', 'update', 'remove'])
 
-const { state } = useLedger()
+const { state, updatePaymentOverride, clearPaymentOverride } = useLedger()
 
 // --- Sort ---
 const sortField = ref(localStorage.getItem('ledger_sort_field') || 'none')
@@ -19,7 +19,6 @@ function setSortField(val) {
   sortField.value = val
   localStorage.setItem('ledger_sort_field', val)
 }
-
 function toggleSortDir() {
   sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
   localStorage.setItem('ledger_sort_dir', sortDir.value)
@@ -48,18 +47,30 @@ function paymentFor(billId) {
   return props.payments.find(p => p.bill_id === billId)
 }
 
+function effectiveName(bill, payment) {
+  return payment?.name_override || bill.name
+}
+function effectiveDueDay(bill, payment) {
+  return payment?.due_day_override || bill.due_day
+}
+function hasOverride(payment) {
+  return payment && (payment.name_override || payment.due_day_override || payment.amount !== props.bills.find(b => b.id === payment.bill_id)?.amount)
+}
+
 function dueClass(bill, payment) {
-  if (!bill.due_day || payment?.is_paid) return 'due-normal'
+  const dd = effectiveDueDay(bill, payment)
+  if (!dd || payment?.is_paid) return 'due-normal'
   const m = state.month
-  if (m < thisMonth) return 'due-overdue'           // past month, still unpaid = missed
-  if (m > thisMonth) return 'due-normal'             // future month, not due yet
-  if (bill.due_day === todayDay) return 'due-today'  // current month
-  if (bill.due_day < todayDay) return 'due-overdue'
+  if (m < thisMonth) return 'due-overdue'
+  if (m > thisMonth) return 'due-normal'
+  if (dd === todayDay) return 'due-today'
+  if (dd < todayDay) return 'due-overdue'
   return 'due-normal'
 }
 
 function dueLabel(bill, payment) {
-  if (!bill.due_day) return 'tanpa tanggal tetap'
+  const dd = effectiveDueDay(bill, payment)
+  if (!dd) return 'tanpa tanggal tetap'
   const cls = dueClass(bill, payment)
   const suffix = cls === 'due-today'
     ? ' · jatuh tempo hari ini'
@@ -68,10 +79,10 @@ function dueLabel(bill, payment) {
       : cls === 'due-overdue'
         ? ' · sudah lewat jatuh tempo'
         : ''
-  return 'jatuh tempo tgl ' + bill.due_day + suffix
+  return 'jatuh tempo tgl ' + dd + suffix
 }
 
-// --- Inline edit ---
+// --- Permanent inline edit ---
 const editingId = ref(null)
 const editName = ref('')
 const editAmount = ref('')
@@ -81,6 +92,7 @@ const editTargetMonth = ref('')
 const editErrors = ref({ name: '', amount: '', due: '' })
 
 function startEdit(bill) {
+  overridingId.value = null
   editingId.value = bill.id
   editName.value = bill.name
   editAmount.value = String(bill.amount)
@@ -89,10 +101,7 @@ function startEdit(bill) {
   editTargetMonth.value = bill.target_month || state.month
   editErrors.value = { name: '', amount: '', due: '' }
 }
-
-function cancelEdit() {
-  editingId.value = null
-}
+function cancelEdit() { editingId.value = null }
 
 function validateEdit() {
   const e = { name: '', amount: '', due: '' }
@@ -105,7 +114,6 @@ function validateEdit() {
   }
   return e
 }
-
 function saveEdit() {
   const e = validateEdit()
   editErrors.value = e
@@ -120,17 +128,54 @@ function saveEdit() {
   editingId.value = null
 }
 
-// --- Confirm delete modal ---
+// --- Monthly override edit ---
+const overridingId = ref(null)
+const overrideName = ref('')
+const overrideAmount = ref('')
+const overrideDueDay = ref('')
+const overrideErrors = ref({ amount: '', due: '' })
+
+function startOverride(bill, payment) {
+  editingId.value = null
+  overridingId.value = bill.id
+  overrideName.value = payment?.name_override || bill.name
+  overrideAmount.value = String(payment?.amount ?? bill.amount)
+  overrideDueDay.value = payment?.due_day_override ? String(payment.due_day_override) : (bill.due_day ? String(bill.due_day) : '')
+  overrideErrors.value = { amount: '', due: '' }
+}
+function cancelOverride() { overridingId.value = null }
+
+function validateOverride() {
+  const e = { amount: '', due: '' }
+  const amt = Number(overrideAmount.value)
+  if (overrideAmount.value === '' || isNaN(amt) || amt <= 0) e.amount = 'Nominal harus lebih dari 0.'
+  if (overrideDueDay.value !== '') {
+    const d = Number(overrideDueDay.value)
+    if (isNaN(d) || d < 1 || d > 31 || !Number.isInteger(d)) e.due = 'Tanggal harus angka 1-31.'
+  }
+  return e
+}
+async function saveOverride(bill) {
+  const e = validateOverride()
+  overrideErrors.value = e
+  if (e.amount || e.due) return
+  const payment = paymentFor(bill.id)
+  await updatePaymentOverride(payment, {
+    name_override: overrideName.value.trim() !== bill.name ? overrideName.value.trim() : null,
+    due_day_override: overrideDueDay.value ? Number(overrideDueDay.value) : null,
+    amount: Number(overrideAmount.value),
+  })
+  overridingId.value = null
+}
+async function resetOverride(bill) {
+  await clearPaymentOverride(paymentFor(bill.id))
+  overridingId.value = null
+}
+
+// --- Confirm delete ---
 const confirmId = ref(null)
-
-function confirmRemove(billId) {
-  confirmId.value = billId
-}
-
-function doRemove() {
-  emit('remove', confirmId.value)
-  confirmId.value = null
-}
+function confirmRemove(billId) { confirmId.value = billId }
+function doRemove() { emit('remove', confirmId.value); confirmId.value = null }
 </script>
 
 <template>
@@ -153,8 +198,10 @@ function doRemove() {
       </div>
 
       <template v-for="bill in sortedBills" :key="bill.id">
-        <!-- Inline edit row -->
+
+        <!-- Permanent edit row -->
         <div v-if="editingId === bill.id" class="bill-edit-row">
+          <div class="edit-row-label">Edit permanen</div>
           <div class="edit-grid">
             <div>
               <input type="text" v-model="editName" placeholder="Nama tagihan"
@@ -186,6 +233,32 @@ function doRemove() {
           </div>
         </div>
 
+        <!-- Monthly override edit row -->
+        <div v-else-if="overridingId === bill.id" class="bill-edit-row override-row">
+          <div class="edit-row-label">Override bulan ini saja</div>
+          <div class="edit-grid">
+            <div>
+              <input type="text" v-model="overrideName" placeholder="Nama tagihan" />
+              <div class="field-error"></div>
+            </div>
+            <div>
+              <input type="number" v-model="overrideAmount" placeholder="Nominal"
+                :class="{ 'input-invalid': overrideErrors.amount }" />
+              <div class="field-error">{{ overrideErrors.amount }}</div>
+            </div>
+            <div>
+              <input type="number" v-model="overrideDueDay" min="1" max="31" placeholder="Tgl (opsional)"
+                :class="{ 'input-invalid': overrideErrors.due }" />
+              <div class="field-error">{{ overrideErrors.due }}</div>
+            </div>
+          </div>
+          <div class="bill-edit-actions">
+            <button class="btn-cancel" @click="cancelOverride">Batal</button>
+            <button v-if="hasOverride(paymentFor(bill.id))" class="btn-reset" @click="resetOverride(bill)">Reset</button>
+            <button class="btn-save" @click="saveOverride(bill)">Simpan</button>
+          </div>
+        </div>
+
         <!-- Normal row -->
         <div v-else
           class="bill-item"
@@ -202,7 +275,10 @@ function doRemove() {
             <span v-if="paymentFor(bill.id)?.is_paid">✓</span>
           </button>
           <div class="bill-info">
-            <div class="bill-name">{{ bill.name }}</div>
+            <div class="bill-name">
+              {{ effectiveName(bill, paymentFor(bill.id)) }}
+              <span v-if="hasOverride(paymentFor(bill.id))" class="badge-override" title="Ada override bulan ini">~</span>
+            </div>
             <div class="bill-meta">
               <span :class="dueClass(bill, paymentFor(bill.id))">
                 {{ dueLabel(bill, paymentFor(bill.id)) }}
@@ -213,7 +289,7 @@ function doRemove() {
               </span>
             </div>
           </div>
-          <div class="bill-amount">{{ formatRupiah(bill.amount) }}</div>
+          <div class="bill-amount">{{ formatRupiah(paymentFor(bill.id)?.amount ?? bill.amount) }}</div>
           <div class="bill-actions">
             <button
               class="icon-btn active-toggle"
@@ -221,7 +297,9 @@ function doRemove() {
               :title="paymentFor(bill.id)?.is_active ? 'Nonaktifkan bulan ini' : 'Aktifkan lagi'"
               @click="emit('toggle-active', paymentFor(bill.id))"
             >{{ paymentFor(bill.id)?.is_active ? '⏸' : '▶' }}</button>
-            <button class="icon-btn" title="Edit" @click="startEdit(bill)">✎</button>
+            <button class="icon-btn override-btn" :class="{ 'has-override': hasOverride(paymentFor(bill.id)) }"
+              title="Override bulan ini" @click="startOverride(bill, paymentFor(bill.id))">≈</button>
+            <button class="icon-btn" title="Edit permanen" @click="startEdit(bill)">✎</button>
             <button class="icon-btn remove-btn" title="Hapus" @click="confirmRemove(bill.id)">×</button>
           </div>
         </div>

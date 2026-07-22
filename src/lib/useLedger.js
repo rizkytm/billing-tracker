@@ -142,6 +142,31 @@ export function useLedger() {
     await loadMonth(state.month)
   }
 
+  async function updatePaymentOverride(payment, { name_override, due_day_override, amount }) {
+    const updates = {
+      amount,
+      name_override: name_override?.trim() || null,
+      due_day_override: due_day_override || null,
+    }
+    const { error } = await supabase.from('bill_payments').update(updates).eq('id', payment.id)
+    if (!error) {
+      payment.amount = amount
+      payment.name_override = updates.name_override
+      payment.due_day_override = updates.due_day_override
+    }
+  }
+
+  async function clearPaymentOverride(payment) {
+    const bill = state.bills.find(b => b.id === payment.bill_id)
+    const updates = { name_override: null, due_day_override: null, amount: bill.amount }
+    const { error } = await supabase.from('bill_payments').update(updates).eq('id', payment.id)
+    if (!error) {
+      payment.name_override = null
+      payment.due_day_override = null
+      payment.amount = bill.amount
+    }
+  }
+
   async function togglePaid(payment) {
     const next = !payment.is_paid
     const { error } = await supabase
@@ -238,6 +263,7 @@ export function useLedger() {
     state,
     initAuth, signIn, signUp, signInWithGoogle, signOut,
     loadMonth, addBill, updateBill, archiveBill, togglePaid, toggleActive,
+    updatePaymentOverride, clearPaymentOverride,
     setBalance, clearBalance, loadHistory,
     totalUnpaid, totalPaid, totalAll, estimatedRemaining,
   }

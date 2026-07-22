@@ -25,12 +25,16 @@ create table if not exists bill_payments (
   is_paid boolean not null default false,
   paid_at timestamptz,
   is_active boolean not null default true, -- per-month skip flag (false = nonaktif bulan ini)
+  name_override text,      -- override nama tagihan bulan ini saja
+  due_day_override int check (due_day_override between 1 and 31), -- override tanggal jatuh tempo bulan ini saja
   created_at timestamptz not null default now(),
   unique (bill_id, month)
 );
 
 -- Migration untuk DB yang sudah ada:
 -- ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+-- ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS name_override text;
+-- ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS due_day_override integer CHECK (due_day_override BETWEEN 1 AND 31);
 
 create table if not exists monthly_balance (
   id uuid primary key default gen_random_uuid(),

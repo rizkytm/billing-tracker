@@ -301,6 +301,15 @@ input, select {
 .icon-btn.remove-btn:hover { color: var(--danger); background: none; }
 .icon-btn.active-toggle.is-active:hover { color: var(--warn); }
 .icon-btn.active-toggle.is-inactive { color: var(--good); }
+.icon-btn.override-btn { font-size: 16px; }
+.icon-btn.override-btn.has-override { color: var(--warn); }
+
+.badge-override {
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 2px;
+}
 
 .badge-inactive {
   background: var(--panel-raised);
@@ -377,6 +386,19 @@ input, select {
 .bill-edit-actions button { font-size: 12px; padding: 7px 12px; border-radius: 6px; }
 .btn-cancel { background: none; border: 1px solid var(--line); color: var(--paper-dim); }
 .btn-save { background: var(--good); border: none; color: #06231A; font-weight: 600; }
+.btn-reset { background: none; border: 1px solid var(--warn-dim); color: var(--warn); }
+.btn-reset:hover { border-color: var(--warn); }
+
+.override-row { border-color: var(--warn-dim); }
+.edit-row-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--paper-dim);
+  margin-bottom: -2px;
+}
+.override-row .edit-row-label { color: var(--warn); }
 
 /* --- Field validation --- */
 .field-error {
