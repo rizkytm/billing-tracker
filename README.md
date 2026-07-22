@@ -73,8 +73,25 @@ npm run dev
 - `bill_payments` — status per bulan per tagihan (`is_paid`, `is_active` untuk skip bulan ini).
 - `monthly_balance` — sisa uang yang kamu input per bulan, untuk kalkulasi estimasi.
 
-## Kalau mau lanjut dikembangkan
-- Kategori tagihan (listrik, cicilan, langganan, dll).
-- Reminder notifikasi H-3 sebelum jatuh tempo (Supabase Edge Function + cron).
-- Export riwayat ke CSV.
-- Multi-akun/keluarga (share 1 ledger — ubah skema `user_id` jadi `household_id`).
+## Roadmap
+
+### Quick wins
+- [ ] **Notifikasi jatuh tempo** — push notification H-3 via Web Notifications API, delivered lewat SW yang sudah ada
+- [ ] **Kategori tagihan** — tag per tagihan (listrik, internet, cicilan, dll), filter di daftar. Tambah kolom `category` di `bills`
+- [ ] **Override nominal per bulan** — edit nominal di `bill_payments` tanpa ubah definisi tagihan (berguna kalau tagihan berubah tiap bulan)
+- [ ] **Export CSV** — download riwayat sebagai spreadsheet, pure frontend
+- [ ] **Dark/light theme toggle** — CSS vars sudah bersih, tinggal flip
+
+### UX polish
+- [ ] **Swipe to pay** — swipe kanan = tandai lunas, mobile-friendly via pointer events
+- [ ] **Salin tagihan bulan lalu** — tombol copy one-off bills dari bulan sebelumnya ke bulan ini
+- [ ] **Catatan per pembayaran** — memo singkat per `bill_payments` (mis. "transfer BCA"). Tambah kolom `notes`
+- [ ] **Blokir navigasi ke bulan depan** — bulan future belum ada tagihan, cukup block nav
+- [ ] **Shortcut keyboard** — tekan `N` untuk fokus ke form tambah tagihan
+- [ ] **Haptic feedback** — `navigator.vibrate(10)` saat toggle bayar di mobile
+
+### Fitur besar
+- [ ] **Budget target bulanan** — set batas pengeluaran, tampilkan over/under vs total tagihan
+- [ ] **Cicilan tracker** — tagihan dengan tenor tetap (mis. 12x), auto-arsip saat lunas. Tambah `installment_total` + `installment_count` di `bills`
+- [ ] **Shared ledger** — mode pasangan/keluarga, invite member via email. Ganti `user_id` → `household_id` (perlu redesign skema)
+- [ ] **Reminder otomatis** — Supabase Edge Function + cron cek jatuh tempo harian, kirim notifikasi via email/WhatsApp (Twilio/Fonnte)
