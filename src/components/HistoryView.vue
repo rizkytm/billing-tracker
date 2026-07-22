@@ -12,6 +12,9 @@ onMounted(async () => {
   loading.value = false
 })
 
+function pct(r) {
+  return r.total > 0 ? Math.round(r.paid / r.total * 100) : 0
+}
 </script>
 
 <template>
@@ -22,9 +25,12 @@ onMounted(async () => {
       <div v-for="r in rows" :key="r.month" class="history-row">
         <span>{{ formatMonthLabel(r.month) }}</span>
         <div class="history-bar-track">
-          <div class="history-bar-fill" :style="{ width: (r.total > 0 ? r.paid / r.total * 100 : 0) + '%' }"></div>
+          <div class="history-bar-fill" :style="{ width: pct(r) + '%' }"></div>
         </div>
-        <span style="text-align:right">{{ formatRupiah(r.paid) }} / {{ formatRupiah(r.total) }}</span>
+        <span class="history-stats">
+          <span class="history-pct" :class="pct(r) === 100 ? 'pct-full' : ''">{{ pct(r) }}%</span>
+          <span class="history-amounts">{{ formatRupiah(r.paid) }} / {{ formatRupiah(r.total) }}</span>
+        </span>
       </div>
     </div>
   </div>

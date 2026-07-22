@@ -400,6 +400,42 @@ input, select {
 }
 .clear-btn:hover { color: var(--danger); border-color: var(--danger); }
 
+/* --- PWA update toast --- */
+.update-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-raised);
+  border: 1px solid var(--good);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-family: var(--mono);
+  z-index: 100;
+  white-space: nowrap;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.update-toast button {
+  background: var(--good);
+  border: none;
+  color: #06231A;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.update-toast .update-dismiss {
+  background: none;
+  border: none;
+  color: var(--paper-dim);
+  padding: 4px;
+  font-size: 12px;
+}
+
 /* --- Confirm / delete modal --- */
 .modal-overlay {
   position: fixed;
@@ -521,16 +557,17 @@ input, select {
 /* --- History --- */
 .history-row {
   display: grid;
-  grid-template-columns: 90px 1fr 90px;
+  grid-template-columns: 90px 1fr 120px;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--line);
   font-family: var(--mono);
   font-size: 12px;
 }
 .history-bar-track {
-  background: var(--ink);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
   border-radius: 4px;
   height: 8px;
   overflow: hidden;
@@ -539,6 +576,23 @@ input, select {
 .history-bar-fill {
   background: var(--good);
   height: 100%;
+  transition: width 0.3s ease;
+}
+.history-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.history-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--paper-dim);
+}
+.history-pct.pct-full { color: var(--good); }
+.history-amounts {
+  font-size: 10px;
+  color: var(--paper-dim);
 }
 
 /* --- Auth screen --- */
