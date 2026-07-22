@@ -1,77 +1,80 @@
 # Ledger — Pencatat Tagihan Bulanan
 
-Vue 3 + Supabase. Deploy gratis di GitHub Pages.
+Vue 3 + Supabase. PWA, deploy gratis di GitHub Pages.
+
+**Live:** https://rizkytm.github.io/billing-tracker/
 
 ## Fitur
-- Catat tagihan bulanan: nama, nominal, tanggal (opsional), rutin atau sekali saja.
-- Checklist "sudah dibayar" per bulan, otomatis reset tiap bulan baru untuk tagihan rutin.
-- Input sisa uang saat ini → kalkulasi otomatis estimasi sisa setelah bayar semua tagihan yang belum lunas.
-- Riwayat bulan-bulan sebelumnya (total tagihan, total dibayar, tren).
-- Login pakai Supabase Auth (email/password) — cuma kamu yang bisa akses datamu.
+- Catat tagihan bulanan: nama, nominal, tanggal jatuh tempo (opsional), rutin atau sekali saja.
+- Checklist "sudah dibayar" per bulan — reset otomatis tiap bulan baru untuk tagihan rutin.
+- Nonaktifkan tagihan bulan ini tanpa menghapus (tombol ⏸), aktifkan lagi bulan berikutnya.
+- Edit tagihan langsung dari daftar (inline edit).
+- Urutkan tagihan berdasarkan nama, tanggal jatuh tempo, atau nilai.
+- Warna jatuh tempo: oranye = hari ini, merah = sudah lewat.
+- Input sisa uang saat ini → estimasi sisa setelah bayar semua yang belum lunas.
+- Riwayat bulan-bulan sebelumnya dengan progress bar persentase bayar.
+- Login pakai email/password atau Google OAuth.
+- PWA — bisa diinstall di HP/desktop, cek update otomatis.
 
 ## 1. Setup Supabase
 
+### Pakai Supabase CLI (direkomendasikan)
+
+```bash
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
+
+### Manual
+
 1. Buat project baru di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor**, jalankan isi file `supabase/schema.sql` di repo ini (bikin 3 tabel + Row Level Security policy, jadi data user lain gak akan pernah kelihatan sama kamu).
-3. Buka **Authentication > Providers**, pastikan **Email** aktif.
-   - Kalau mau langsung pakai tanpa verifikasi email, matikan "Confirm email" di **Authentication > Settings**.
-4. Buka **Project Settings > API**, catat:
-   - `Project URL`
-   - `anon public` key
+2. **SQL Editor** → jalankan `supabase/migrations/20260721000000_init_schema.sql`.
+3. Kalau DB sudah ada sebelumnya, jalankan juga:
+   ```sql
+   ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+   ```
+4. **Authentication → Providers** → aktifkan **Email** dan/atau **Google**.
+   - Google OAuth: butuh Client ID + Secret dari [Google Cloud Console](https://console.cloud.google.com). Tambahkan redirect URI: `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`.
+5. **Authentication → URL Configuration** → tambahkan ke Redirect URLs:
+   ```
+   http://localhost:5173/billing-tracker/**
+   https://YOUR_GITHUB_USERNAME.github.io/billing-tracker/**
+   ```
+6. **Project Settings → API** → catat `Project URL` dan `anon public` key.
 
 ## 2. Setup lokal
 
 ```bash
 npm install
 cp .env.example .env.local
-# isi .env.local dengan Project URL & anon key dari Supabase
+# isi .env.local:
+# VITE_SUPABASE_URL=https://xxxx.supabase.co
+# VITE_SUPABASE_ANON_KEY=eyJ...
 npm run dev
 ```
 
-Buka browser, daftar akun (email/password bebas, ini cuma buat kamu sendiri), lalu mulai catat tagihan.
-
 ## 3. Deploy ke GitHub Pages
 
-1. Push project ini ke repo GitHub baru, misal nama repo `billing-tracker`.
-2. Edit `vite.config.js`, samakan `base` dengan nama repo:
+1. Push ke repo GitHub, nama repo = `billing-tracker`.
+2. Pastikan `base` di `vite.config.js` sesuai nama repo:
    ```js
    base: '/billing-tracker/'
    ```
-   (Kalau repo-nya `namakamu.github.io`, pakai `base: '/'`.)
-3. Di GitHub repo: **Settings > Pages > Build and deployment > Source**, pilih **GitHub Actions**.
-4. Di **Settings > Secrets and variables > Actions**, tambahkan 2 repository secrets:
+3. **Settings → Pages → Source** → pilih **GitHub Actions**.
+4. **Settings → Secrets and variables → Actions** → tambahkan:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-5. Push ke branch `main` — workflow `.github/workflows/deploy.yml` otomatis build & publish ke GitHub Pages.
-
-Anon key aman dipakai di frontend karena akses data tetap dibatasi Row Level Security (tiap user cuma bisa baca/tulis datanya sendiri).
+5. Push ke `main` → auto build & deploy.
 
 ## Struktur data (Supabase)
 
-- `bills` — definisi tagihan (nama, nominal, tanggal opsional, rutin/tidak).
-- `bill_payments` — status lunas per bulan per tagihan (snapshot nominal + checklist).
-- `monthly_balance` — sisa uang yang kamu input per bulan, dipakai untuk kalkulasi estimasi.
-
-## Struktur project
-
-```
-src/
-  lib/
-    supabase.js     # koneksi Supabase
-    month.js        # helper format bulan & rupiah
-    useLedger.js     # semua logic data (auth, CRUD tagihan, kalkulasi)
-  components/
-    BalanceCard.vue  # kartu statement: total, input sisa uang, estimasi
-    BillList.vue     # daftar tagihan + checklist
-    BillForm.vue     # form tambah tagihan
-    HistoryView.vue  # riwayat bulan sebelumnya
-  views/
-    Login.vue
-    Dashboard.vue
-```
+- `bills` — definisi tagihan (nama, nominal, tanggal opsional, rutin/tidak, `archived`).
+- `bill_payments` — status per bulan per tagihan (`is_paid`, `is_active` untuk skip bulan ini).
+- `monthly_balance` — sisa uang yang kamu input per bulan, untuk kalkulasi estimasi.
 
 ## Kalau mau lanjut dikembangkan
-- Tambah kategori tagihan (listrik, cicilan, langganan, dll).
-- Reminder WhatsApp/notifikasi H-3 sebelum jatuh tempo (bisa pakai Supabase Edge Function + cron).
+- Kategori tagihan (listrik, cicilan, langganan, dll).
+- Reminder notifikasi H-3 sebelum jatuh tempo (Supabase Edge Function + cron).
 - Export riwayat ke CSV.
-- Multi-akun/keluarga (share 1 ledger ke beberapa user — perlu ubah skema `user_id` jadi `household_id`).
+- Multi-akun/keluarga (share 1 ledger — ubah skema `user_id` jadi `household_id`).

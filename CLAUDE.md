@@ -20,7 +20,7 @@ Copy `.env.example` → `.env.local` and fill:
 
 ## Architecture
 
-**Vue 3 + Supabase SPA** — no Pinia, no router. Auth and navigation handled manually.
+**Vue 3 + Supabase SPA** — no Pinia, no router. Auth and navigation handled manually. PWA via `vite-plugin-pwa`.
 
 ### State Management
 
@@ -35,14 +35,14 @@ Components import `useLedger()` directly — shared singleton pattern (not per-i
 ### Data Flow
 
 ```
-Login.vue → supabase.auth → session in useLedger
+Login.vue → supabase.auth (email or Google OAuth) → session in useLedger
 Dashboard.vue → useLedger.loadMonth(YYYY-MM)
-  ├── bills (recurring + month-specific one-offs)
-  ├── bill_payments (per-bill per-month payment status)
+  ├── bills (recurring + month-specific one-offs, excludes archived)
+  ├── bill_payments (per-bill per-month: is_paid, is_active, amount)
   └── monthly_balance (user-input current balance)
 ```
 
-Adding a bill auto-creates payment records for the current month. Toggling payment updates `bill_payments.is_paid`. Balance input upserts `monthly_balance`.
+`loadMonth` upserts payment rows with `ignoreDuplicates: true` — existing `is_paid`/`is_active` state preserved, new months get fresh rows with defaults.
 
 ### Database (Supabase / PostgreSQL)
 
@@ -50,11 +50,34 @@ Adding a bill auto-creates payment records for the current month. Toggling payme
 
 | Table | Purpose |
 |-------|---------|
-| `bills` | Bill definitions (`is_recurring`, `target_month` for one-offs, `archived`) |
-| `bill_payments` | Payment status per bill per month; unique on `(bill_id, month)` |
-| `monthly_balance` | User-input balance snapshot per month; unique on `(user_id, month)` |
+| `bills` | Bill definitions (`is_recurring`, `target_month` for one-offs, `archived` for soft-delete) |
+| `bill_payments` | Payment status per bill per month; `is_active` = per-month skip flag; unique on `(bill_id, month)` |
+| `monthly_balance` | User-input balance snapshot per month; unique on `(user_id, month)`. Delete row to clear. |
 
-Schema in `supabase/schema.sql`.
+Schema: `supabase/schema.sql`. Migration: `supabase/migrations/20260721000000_init_schema.sql`.
+
+Existing DB migration needed:
+```sql
+ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+```
+
+### useLedger.js — exported functions
+
+| Function | Description |
+|----------|-------------|
+| `loadMonth(key)` | Fetch bills + payments + balance for YYYY-MM |
+| `addBill(data)` | Insert bill, reload month |
+| `updateBill(id, data)` | Update bill fields, reload month |
+| `archiveBill(id)` | Set `archived=true`, reload month |
+| `togglePaid(payment)` | Flip `is_paid` on bill_payments row |
+| `toggleActive(payment)` | Flip `is_active`; deactivating also clears `is_paid` |
+| `setBalance(amount)` | Upsert monthly_balance |
+| `clearBalance()` | Delete monthly_balance row for current month |
+| `loadHistory()` | Aggregate paid/total per month across all months |
+| `signIn/signUp/signOut` | Email auth |
+| `signInWithGoogle` | OAuth redirect; `redirectTo` = `window.location.origin + BASE_URL` |
+
+Computeds `totalUnpaid`, `totalPaid`, `totalAll`, `estimatedRemaining` only count `is_active = true` payments.
 
 ### Key Files
 
@@ -63,9 +86,19 @@ Schema in `supabase/schema.sql`.
 | `src/lib/useLedger.js` | All business logic, CRUD, computed balances |
 | `src/lib/month.js` | Date/currency helpers |
 | `src/lib/supabase.js` | Supabase client init |
+| `src/App.vue` | Root — auth gate + PWA update toast via `useRegisterSW` |
 | `src/views/Dashboard.vue` | App shell, month nav, tab switching |
-| `src/views/Login.vue` | Auth UI (signin/signup toggle) |
-| `vite.config.js` | Base path set to `/billing-tracker/` for GitHub Pages |
+| `src/views/Login.vue` | Auth UI — email form + Google button |
+| `src/components/BillList.vue` | Sort bar, bill rows, inline edit, confirm modal, active toggle |
+| `src/components/BillForm.vue` | Add bill form with field-level validation |
+| `src/components/BalanceCard.vue` | Statement card with balance input + clear button |
+| `src/components/HistoryView.vue` | Monthly history with paid% progress bar |
+| `vite.config.js` | Base `/billing-tracker/`, VitePWA plugin config |
+| `public/icon.svg` | App icon (SVG, "L" mark) |
+
+### PWA
+
+`vite-plugin-pwa` with `generateSW` mode. SW precaches all app assets. Supabase API calls not cached (network only). `App.vue` uses `useRegisterSW` from `virtual:pwa-register/vue` — shows update toast when new SW available, checks for updates every hour.
 
 ### Deployment
 
@@ -74,4 +107,5 @@ GitHub Actions (`.github/workflows/deploy.yml`) builds with repository secrets a
 ## Notes
 
 - UI, README, comments: Indonesian (Bahasa Indonesia)
-- Anon key is safe to expose — RLS enforces user isolation at DB level
+- Anon key safe to expose — RLS enforces user isolation at DB level
+- `supabase/.temp/` is gitignored (contains linked project ref)
