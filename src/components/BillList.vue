@@ -77,6 +77,7 @@ const editName = ref('')
 const editAmount = ref('')
 const editDueDay = ref('')
 const editIsRecurring = ref(true)
+const editTargetMonth = ref('')
 const editErrors = ref({ name: '', amount: '', due: '' })
 
 function startEdit(bill) {
@@ -85,6 +86,7 @@ function startEdit(bill) {
   editAmount.value = String(bill.amount)
   editDueDay.value = bill.due_day ? String(bill.due_day) : ''
   editIsRecurring.value = bill.is_recurring
+  editTargetMonth.value = bill.target_month || state.month
   editErrors.value = { name: '', amount: '', due: '' }
 }
 
@@ -113,6 +115,7 @@ function saveEdit() {
     amount: Number(editAmount.value),
     due_day: editDueDay.value ? Number(editDueDay.value) : null,
     is_recurring: editIsRecurring.value,
+    target_month: editIsRecurring.value ? null : editTargetMonth.value,
   })
   editingId.value = null
 }
@@ -173,6 +176,10 @@ function doRemove() {
             <input type="checkbox" v-model="editIsRecurring" style="width:auto" />
             Tagihan rutin
           </label>
+          <div v-if="!editIsRecurring" class="target-month-row">
+            <label class="target-month-label">Tagih pada bulan</label>
+            <input type="month" v-model="editTargetMonth" />
+          </div>
           <div class="bill-edit-actions">
             <button class="btn-cancel" @click="cancelEdit">Batal</button>
             <button class="btn-save" @click="saveEdit">Simpan</button>

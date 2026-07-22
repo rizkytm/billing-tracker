@@ -127,10 +127,10 @@ export function useLedger() {
     return true
   }
 
-  async function updateBill(billId, { name, amount, due_day, is_recurring }) {
+  async function updateBill(billId, { name, amount, due_day, is_recurring, target_month }) {
     const { error } = await supabase
       .from('bills')
-      .update({ name, amount, due_day: due_day || null, is_recurring })
+      .update({ name, amount, due_day: due_day || null, is_recurring, target_month: is_recurring ? null : target_month })
       .eq('id', billId)
     if (error) { state.error = error.message; return false }
     await loadMonth(state.month)
