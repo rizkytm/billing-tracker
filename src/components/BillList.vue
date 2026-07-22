@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { formatRupiah } from '../lib/month'
+import { formatRupiah, currentMonthKey } from '../lib/month'
+import { useLedger } from '../lib/useLedger'
 
 const props = defineProps({
   bills: { type: Array, required: true },
   payments: { type: Array, required: true },
 })
 const emit = defineEmits(['toggle', 'toggle-active', 'update', 'remove'])
+
+const { state } = useLedger()
 
 // --- Sort ---
 const sortField = ref(localStorage.getItem('ledger_sort_field') || 'none')
@@ -39,6 +42,7 @@ const sortedBills = computed(() => {
 
 // --- Helpers ---
 const todayDay = new Date().getDate()
+const thisMonth = currentMonthKey()
 
 function paymentFor(billId) {
   return props.payments.find(p => p.bill_id === billId)
@@ -46,7 +50,10 @@ function paymentFor(billId) {
 
 function dueClass(bill, payment) {
   if (!bill.due_day || payment?.is_paid) return 'due-normal'
-  if (bill.due_day === todayDay) return 'due-today'
+  const m = state.month
+  if (m < thisMonth) return 'due-overdue'           // past month, still unpaid = missed
+  if (m > thisMonth) return 'due-normal'             // future month, not due yet
+  if (bill.due_day === todayDay) return 'due-today'  // current month
   if (bill.due_day < todayDay) return 'due-overdue'
   return 'due-normal'
 }
@@ -56,9 +63,11 @@ function dueLabel(bill, payment) {
   const cls = dueClass(bill, payment)
   const suffix = cls === 'due-today'
     ? ' · jatuh tempo hari ini'
-    : cls === 'due-overdue'
-      ? ' · sudah lewat jatuh tempo'
-      : ''
+    : cls === 'due-overdue' && state.month < thisMonth
+      ? ' · tidak dibayar'
+      : cls === 'due-overdue'
+        ? ' · sudah lewat jatuh tempo'
+        : ''
   return 'jatuh tempo tgl ' + bill.due_day + suffix
 }
 
