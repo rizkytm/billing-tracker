@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useLedger } from '../lib/useLedger'
 import { formatMonthLabel, formatRupiah } from '../lib/month'
 
@@ -12,7 +12,6 @@ onMounted(async () => {
   loading.value = false
 })
 
-const maxTotal = computed(() => Math.max(1, ...rows.value.map(r => r.total)))
 </script>
 
 <template>
@@ -23,7 +22,7 @@ const maxTotal = computed(() => Math.max(1, ...rows.value.map(r => r.total)))
       <div v-for="r in rows" :key="r.month" class="history-row">
         <span>{{ formatMonthLabel(r.month) }}</span>
         <div class="history-bar-track">
-          <div class="history-bar-fill" :style="{ width: (r.total / maxTotal * 100) + '%' }"></div>
+          <div class="history-bar-fill" :style="{ width: (r.total > 0 ? r.paid / r.total * 100 : 0) + '%' }"></div>
         </div>
         <span style="text-align:right">{{ formatRupiah(r.paid) }} / {{ formatRupiah(r.total) }}</span>
       </div>
