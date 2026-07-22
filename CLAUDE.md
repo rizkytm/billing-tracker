@@ -51,7 +51,7 @@ Dashboard.vue → useLedger.loadMonth(YYYY-MM)
 | Table | Purpose |
 |-------|---------|
 | `bills` | Bill definitions (`is_recurring`, `target_month` for one-offs, `archived` for soft-delete) |
-| `bill_payments` | Payment status per bill per month; `is_active` = per-month skip flag; `amount` = monthly snapshot (overridable); unique on `(bill_id, month)` |
+| `bill_payments` | Payment status per bill per month; `is_active` = per-month skip flag; `amount`, `name_override`, `due_day_override` = per-month overrides; unique on `(bill_id, month)` |
 | `monthly_balance` | User-input balance snapshot per month; unique on `(user_id, month)`. Delete row to clear. |
 
 Schema: `supabase/schema.sql`. Migration: `supabase/migrations/20260721000000_init_schema.sql`.
@@ -61,11 +61,7 @@ Existing DB migration needed:
 ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
 ```
 
-Planned schema addition (not yet implemented — override tagihan per bulan):
-```sql
-ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS name_override text;
-ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS due_day_override integer CHECK (due_day_override BETWEEN 1 AND 31);
-```
+Migration `20260722000000_add_payment_overrides.sql` adds `name_override` and `due_day_override` to `bill_payments`.
 
 ### useLedger.js — exported functions
 
@@ -74,6 +70,8 @@ ALTER TABLE bill_payments ADD COLUMN IF NOT EXISTS due_day_override integer CHEC
 | `loadMonth(key)` | Fetch bills + payments + balance for YYYY-MM |
 | `addBill(data)` | Insert bill, reload month. `data.target_month` used when `is_recurring=false` |
 | `updateBill(id, data)` | Update bill fields incl. `target_month`, reload month |
+| `updatePaymentOverride(payment, data)` | Override `amount`, `name_override`, `due_day_override` on `bill_payments` for current month only |
+| `clearPaymentOverride(payment)` | Reset overrides, restore `amount` from bill definition |
 | `archiveBill(id)` | Set `archived=true`, reload month |
 | `togglePaid(payment)` | Flip `is_paid` on bill_payments row |
 | `toggleActive(payment)` | Flip `is_active`; deactivating also clears `is_paid` |
@@ -95,7 +93,7 @@ Computeds `totalUnpaid`, `totalPaid`, `totalAll`, `estimatedRemaining` only coun
 | `src/App.vue` | Root — auth gate + PWA update toast via `useRegisterSW` |
 | `src/views/Dashboard.vue` | App shell, month nav, tab switching |
 | `src/views/Login.vue` | Auth UI — email form + Google button |
-| `src/components/BillList.vue` | Sort bar, bill rows, inline edit (incl. target month for one-offs), confirm modal, active toggle, due date color per month context |
+| `src/components/BillList.vue` | Sort bar (uses override values), bill rows, permanent edit (✎), monthly override edit (≈), confirm modal, active toggle, due date color per month context |
 | `src/components/BillForm.vue` | Add bill form with field-level validation, target month picker for one-off bills |
 | `src/components/BalanceCard.vue` | Statement card with balance input + clear button |
 | `src/components/HistoryView.vue` | Monthly history with paid% progress bar |
