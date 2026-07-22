@@ -9,7 +9,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['toggle', 'toggle-active', 'update', 'remove'])
 
-const { state, updatePaymentOverride, clearPaymentOverride } = useLedger()
+const { state, loadMonth, updatePaymentOverride, clearPaymentOverride } = useLedger()
 
 // --- Sort ---
 const sortField = ref(localStorage.getItem('ledger_sort_field') || 'none')
@@ -28,10 +28,19 @@ const sortedBills = computed(() => {
   const copy = [...props.bills]
   if (sortField.value === 'none') return copy
   copy.sort((a, b) => {
+    const pa = paymentFor(a.id)
+    const pb = paymentFor(b.id)
     let av, bv
-    if (sortField.value === 'name') { av = a.name.toLowerCase(); bv = b.name.toLowerCase() }
-    else if (sortField.value === 'amount') { av = a.amount; bv = b.amount }
-    else if (sortField.value === 'date') { av = a.due_day ?? 999; bv = b.due_day ?? 999 }
+    if (sortField.value === 'name') {
+      av = (pa?.name_override || a.name).toLowerCase()
+      bv = (pb?.name_override || b.name).toLowerCase()
+    } else if (sortField.value === 'amount') {
+      av = pa?.amount ?? a.amount
+      bv = pb?.amount ?? b.amount
+    } else if (sortField.value === 'date') {
+      av = pa?.due_day_override || a.due_day || 999
+      bv = pb?.due_day_override || b.due_day || 999
+    }
     if (av < bv) return sortDir.value === 'asc' ? -1 : 1
     if (av > bv) return sortDir.value === 'asc' ? 1 : -1
     return 0
@@ -166,10 +175,12 @@ async function saveOverride(bill) {
     amount: Number(overrideAmount.value),
   })
   overridingId.value = null
+  await loadMonth(state.month)
 }
 async function resetOverride(bill) {
   await clearPaymentOverride(paymentFor(bill.id))
   overridingId.value = null
+  await loadMonth(state.month)
 }
 
 // --- Confirm delete ---
