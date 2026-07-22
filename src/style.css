@@ -533,6 +533,27 @@ input, select {
   color: var(--paper-dim);
 }
 
+.target-month-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.target-month-label {
+  font-size: 13px;
+  color: var(--paper-dim);
+  white-space: nowrap;
+}
+.target-month-row input[type="month"] {
+  background: var(--ink);
+  border: 1px solid var(--good);
+  color: var(--paper);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--mono);
+  color-scheme: dark;
+}
+
 /* --- Tabs --- */
 .tabs {
   display: flex;

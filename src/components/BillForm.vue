@@ -1,13 +1,22 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useLedger } from '../lib/useLedger'
 
 const emit = defineEmits(['add'])
+
+const { state } = useLedger()
 
 const name = ref('')
 const amount = ref('')
 const dueDay = ref('')
 const isRecurring = ref(true)
+const targetMonth = ref(state.month)
 const errors = ref({ name: '', amount: '', due: '' })
+
+// reset target month to viewed month when toggling back to one-off
+watch(isRecurring, (val) => {
+  if (!val) targetMonth.value = state.month
+})
 
 function validate() {
   const e = { name: '', amount: '', due: '' }
@@ -30,11 +39,13 @@ function submit() {
     amount: Number(amount.value),
     due_day: dueDay.value ? Number(dueDay.value) : null,
     is_recurring: isRecurring.value,
+    target_month: isRecurring.value ? null : targetMonth.value,
   })
   name.value = ''
   amount.value = ''
   dueDay.value = ''
   isRecurring.value = true
+  targetMonth.value = state.month
   errors.value = { name: '', amount: '', due: '' }
 }
 </script>
@@ -64,6 +75,10 @@ function submit() {
         <input type="checkbox" v-model="isRecurring" style="width:auto" />
         Tagihan rutin (muncul otomatis tiap bulan)
       </label>
+      <div v-if="!isRecurring" class="target-month-row">
+        <label class="target-month-label">Tagih pada bulan</label>
+        <input type="month" v-model="targetMonth" />
+      </div>
       <button class="primary-btn" type="submit">Tambah</button>
     </form>
   </div>
