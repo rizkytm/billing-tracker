@@ -38,6 +38,17 @@ export function useLedger() {
     return !error
   }
 
+  async function signInWithGoogle() {
+    state.error = null
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + import.meta.env.BASE_URL,
+      },
+    })
+    if (error) state.error = error.message
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     state.bills = []
@@ -225,7 +236,7 @@ export function useLedger() {
 
   return {
     state,
-    initAuth, signIn, signUp, signOut,
+    initAuth, signIn, signUp, signInWithGoogle, signOut,
     loadMonth, addBill, updateBill, archiveBill, togglePaid, toggleActive,
     setBalance, clearBalance, loadHistory,
     totalUnpaid, totalPaid, totalAll, estimatedRemaining,
