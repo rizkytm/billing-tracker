@@ -446,6 +446,7 @@ input, select {
   padding: 30px 10px;
   border: 1px dashed var(--line);
   border-radius: var(--radius);
+  margin-bottom: 24px;
 }
 
 /* --- Form --- */
