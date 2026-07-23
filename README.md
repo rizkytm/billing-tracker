@@ -14,6 +14,7 @@ Vue 3 + Supabase. PWA, deploy gratis di GitHub Pages.
 - Urutkan tagihan berdasarkan nama, tanggal jatuh tempo, atau nilai — sort memakai nilai override jika ada.
 - Warna jatuh tempo kontekstual: oranye = hari ini, merah = lewat jatuh tempo (bulan lalu = tidak dibayar), normal = bulan depan.
 - Input sisa uang saat ini → estimasi sisa setelah bayar semua yang belum lunas.
+- Input tanggal gajian berikutnya → estimasi tagihan s.d. gajian + sisa uang saat gajian. Tagihan tanpa tanggal jatuh tempo tidak dihitung (diasumsikan fleksibel).
 - Riwayat bulan-bulan sebelumnya dengan progress bar persentase bayar.
 - Login pakai email/password atau Google OAuth.
 - PWA — bisa diinstall di HP/desktop, cek update otomatis.

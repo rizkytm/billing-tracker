@@ -95,7 +95,7 @@ Computeds `totalUnpaid`, `totalPaid`, `totalAll`, `estimatedRemaining` only coun
 | `src/views/Login.vue` | Auth UI — email form + Google button |
 | `src/components/BillList.vue` | Sort bar (uses override values), bill rows, permanent edit (✎), monthly override edit (≈), confirm modal, active toggle, due date color per month context |
 | `src/components/BillForm.vue` | Add bill form with field-level validation, target month picker for one-off bills |
-| `src/components/BalanceCard.vue` | Statement card with balance input + clear button |
+| `src/components/BalanceCard.vue` | Statement card with balance input + clear button + payday estimator (localStorage, excludes bills without `due_day`) |
 | `src/components/HistoryView.vue` | Monthly history with paid% progress bar |
 | `vite.config.js` | Base `/billing-tracker/`, VitePWA plugin config |
 | `public/icon.svg` | App icon (SVG, "L" mark) |
