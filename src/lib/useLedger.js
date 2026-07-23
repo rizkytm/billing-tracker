@@ -93,10 +93,12 @@ export function useLedger() {
       })
     }
 
+    const billIds = state.bills.map(b => b.id)
     const { data: payments, error: payErr } = await supabase
       .from('bill_payments')
       .select('*')
       .eq('month', monthKey)
+      .in('bill_id', billIds.length > 0 ? billIds : ['00000000-0000-0000-0000-000000000000'])
 
     if (payErr) { state.error = payErr.message; state.loading = false; return }
     state.payments = payments || []
