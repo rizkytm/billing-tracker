@@ -261,12 +261,30 @@ export function useLedger() {
     return bal - totalUnpaid.value
   })
 
+  async function loadPaymentsForMonth(monthKey) {
+    const uid = userId()
+    if (!uid) return []
+    const { data: bills } = await supabase
+      .from('bills')
+      .select('id')
+      .eq('archived', false)
+      .or(`is_recurring.eq.true,target_month.eq.${monthKey}`)
+    const billIds = bills?.map(b => b.id) || []
+    if (billIds.length === 0) return []
+    const { data: payments } = await supabase
+      .from('bill_payments')
+      .select('*')
+      .eq('month', monthKey)
+      .in('bill_id', billIds)
+    return payments || []
+  }
+
   return {
     state,
     initAuth, signIn, signUp, signInWithGoogle, signOut,
     loadMonth, addBill, updateBill, archiveBill, togglePaid, toggleActive,
     updatePaymentOverride, clearPaymentOverride,
-    setBalance, clearBalance, loadHistory,
+    setBalance, clearBalance, loadHistory, loadPaymentsForMonth,
     totalUnpaid, totalPaid, totalAll, estimatedRemaining,
   }
 }

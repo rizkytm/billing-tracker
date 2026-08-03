@@ -11,7 +11,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['save', 'clear'])
 
-const { state } = useLedger()
+const { state, loadPaymentsForMonth } = useLedger()
+const nextMonthPayments = ref([])
 
 const input = ref(props.currentBalance ?? '')
 watch(() => props.currentBalance, (v) => { input.value = v ?? '' })
@@ -24,6 +25,17 @@ function save() {
 // --- Payday ---
 const paydayDate = ref(localStorage.getItem('ledger_payday') || '')
 watch(paydayDate, (v) => localStorage.setItem('ledger_payday', v))
+
+watch(paydayDate, async (v) => {
+  if (!v) { nextMonthPayments.value = []; return }
+  const pd = new Date(v + 'T00:00:00')
+  const paydayYM = v.slice(0, 7)
+  if (paydayYM !== state.month) {
+    nextMonthPayments.value = await loadPaymentsForMonth(paydayYM)
+  } else {
+    nextMonthPayments.value = []
+  }
+}, { immediate: true })
 
 const totalUntilPayday = computed(() => {
   if (!paydayDate.value || props.currentBalance === null) return null
@@ -40,17 +52,23 @@ const totalUntilPayday = computed(() => {
       .filter(p => p.is_active && !p.is_paid)
       .filter(p => {
         const bill = state.bills.find(b => b.id === p.bill_id)
-        return bill?.due_day && bill.due_day <= paydayDay
+        const dueDay = p.due_day_override || bill?.due_day
+        return dueDay && dueDay <= paydayDay
       })
       .reduce((s, p) => s + Number(p.amount), 0)
   } else {
-    // different month — all current unpaid + recurring bills due before payday day
+    // different month — all current unpaid + next month bills due before payday day
     const currentUnpaid = state.payments
       .filter(p => p.is_active && !p.is_paid)
       .reduce((s, p) => s + Number(p.amount), 0)
-    const nextMonthBills = state.bills
-      .filter(b => b.is_recurring && b.due_day && b.due_day <= paydayDay)
-      .reduce((s, b) => s + Number(b.amount), 0)
+    const nextMonthBills = nextMonthPayments.value
+      .filter(p => {
+        const bill = state.bills.find(b => b.id === p.bill_id)
+        if (!bill?.is_recurring) return false
+        const dueDay = p.due_day_override || bill.due_day
+        return dueDay && dueDay <= paydayDay
+      })
+      .reduce((s, p) => s + Number(p.amount), 0)
     return currentUnpaid + nextMonthBills
   }
 })
