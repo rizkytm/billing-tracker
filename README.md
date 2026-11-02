@@ -104,7 +104,7 @@ Aktifkan lewat tombol **"Aktifkan notifikasi"** di banner (izin browser + subscr
 - Test manual kirim: Actions → **Notify due bills** → *Run workflow*, atau
   `curl -X POST -H 'Content-Type: application/json' -d '{}' https://YOUR_REF.supabase.co/functions/v1/notify-due`
 - Kirim ulang di hari yang sama: set `last_sent_date` = NULL di `push_subscriptions` (dedup 1x/hari).
-- Tombol tidak muncul: push sudah subscribe, atau permission `denied` (reset lewat setelan situs Chrome). Banner tampil walau tanpa item selama push belum subscribe.
+- Tombol tidak muncul: push sudah subscribe, atau permission `denied` — banner menampilkan petunjuk pulih (setelan situs → Notifikasi → Izinkan → muat ulang). Banner tampil walau tanpa item selama push belum subscribe. Flag `ledger_push_enabled` dibersihkan otomatis kalau subscription sudah mati (mis. izin di-revoke).
 - Tagihan telat (lewat jatuh tempo, belum bayar) ikut muncul di banner dan push — tiap hari sampai ditandai lunas/dinonaktifkan.
 - Error subscribe tampil di banner + console. VAPID key harus murni base64url — kalau aneh, cek isi bundle (`applicationServerKey`) dan nilai secret GH.
 

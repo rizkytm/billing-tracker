@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getDueSoon } from '../lib/dueSoon'
 import { formatRupiah } from '../lib/month'
 import { enablePush } from '../lib/push'
@@ -33,7 +33,25 @@ const canEnable = ref(
   Notification.permission !== 'denied' &&
   !localStorage.getItem('ledger_push_enabled'),
 )
+const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied'
 const enableMsg = ref('')
+
+// Kebenaran subscription = pushManager, bukan flag localStorage (basi kalau
+// user revoke izin — browser ikut matikan subscription)
+onMounted(async () => {
+  if (denied) return
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const alive = !!(await reg.pushManager.getSubscription())
+    if (alive) {
+      canEnable.value = false
+      localStorage.setItem('ledger_push_enabled', '1')
+    } else if (localStorage.getItem('ledger_push_enabled')) {
+      localStorage.removeItem('ledger_push_enabled')
+      canEnable.value = true
+    }
+  } catch { /* biarkan state awal */ }
+})
 
 // Notifikasi browser 1x/hari selama app terbuka
 // ponytail: hanya jalan selama tab/PWA terbuka — push (Phase 3) tutup celah ini
@@ -84,7 +102,7 @@ async function enableNotif() {
 </script>
 
 <template>
-  <div v-if="dueSoon.length || canEnable" class="due-soon-banner">
+  <div v-if="dueSoon.length || canEnable || denied" class="due-soon-banner">
     <div class="due-soon-head">
       <button class="due-soon-title" @click="toggleCollapse">
         {{ collapsed ? '▸' : '▾' }}
@@ -93,6 +111,9 @@ async function enableNotif() {
       <button v-if="canEnable"
         class="due-soon-enable" @click="enableNotif">Aktifkan notifikasi</button>
       <span v-if="enableMsg" class="due-soon-status">{{ enableMsg }}</span>
+    </div>
+    <div v-if="denied" class="due-soon-hint">
+      Izin notifikasi diblokir — buka setelan situs (ikon gembok / ⋮ → Info → Permissions) → Notifikasi → <strong>Izinkan</strong>, lalu muat ulang halaman.
     </div>
     <ul v-if="dueSoon.length && !collapsed">
       <li v-for="item in dueSoon" :key="item.bill.id">

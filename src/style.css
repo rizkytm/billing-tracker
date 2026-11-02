@@ -807,6 +807,12 @@ input, select {
   flex: 1;
   text-align: right;
 }
+.due-soon-hint {
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
 .due-soon-banner ul {
   margin: 0;
   padding: 0;
