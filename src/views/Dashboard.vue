@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useLedger } from '../lib/useLedger'
 import { shiftMonthKey, formatMonthLabel } from '../lib/month'
 import BalanceCard from '../components/BalanceCard.vue'
+import DueSoonBanner from '../components/DueSoonBanner.vue'
 import BillList from '../components/BillList.vue'
 import BillForm from '../components/BillForm.vue'
 import HistoryView from '../components/HistoryView.vue'
@@ -48,6 +49,8 @@ function nextMonth() {
         <span class="month-label">{{ formatMonthLabel(state.month) }}</span>
         <button @click="nextMonth">&rarr;</button>
       </div>
+
+      <DueSoonBanner :bills="state.bills" :payments="state.payments" />
 
       <BalanceCard
         :current-balance="state.balanceRow ? Number(state.balanceRow.current_balance) : null"

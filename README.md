@@ -79,7 +79,7 @@ npm run dev
 ## Roadmap
 
 ### Quick wins
-- [ ] **Notifikasi jatuh tempo** — push notification H-3 via Web Notifications API, delivered lewat SW yang sudah ada
+- [x] **Notifikasi jatuh tempo** — banner H-3 di dashboard, Web Notification saat app terbuka, dan Web Push harian via Edge Function `notify-due` + cron GitHub Actions (07:00 WIB)
 - [ ] **Kategori tagihan** — tag per tagihan (listrik, internet, cicilan, dll), filter di daftar. Tambah kolom `category` di `bills`
 - [x] **Override tagihan per bulan** — edit nama, nominal, dan tanggal jatuh tempo di `bill_payments` tanpa ubah definisi tagihan. Tombol `≈` terpisah dari edit permanen (✎). Badge `~` muncul jika ada override aktif.
 - [ ] **Export CSV** — download riwayat sebagai spreadsheet, pure frontend
@@ -97,4 +97,4 @@ npm run dev
 - [ ] **Budget target bulanan** — set batas pengeluaran, tampilkan over/under vs total tagihan
 - [ ] **Cicilan tracker** — tagihan dengan tenor tetap (mis. 12x), auto-arsip saat lunas. Tambah `installment_total` + `installment_count` di `bills`
 - [ ] **Shared ledger** — mode pasangan/keluarga, invite member via email. Ganti `user_id` → `household_id` (perlu redesign skema)
-- [ ] **Reminder otomatis** — Supabase Edge Function + cron cek jatuh tempo harian, kirim notifikasi via email/WhatsApp (Twilio/Fonnte)
+- [ ] **Reminder otomatis** — kirim via email/WhatsApp (Twilio/Fonnte); Edge Function `notify-due` + jadwal harian sudah dipakai untuk push, tinggal tambah channel

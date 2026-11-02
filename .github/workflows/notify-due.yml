@@ -1,0 +1,20 @@
+name: Notify due bills
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 00:00 UTC = 07:00 WIB
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger notify-due function
+        run: |
+          curl -fsS -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{}' \
+            https://ucywfnqusilpruuvvdkj.supabase.co/functions/v1/notify-due
