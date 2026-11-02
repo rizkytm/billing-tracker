@@ -21,6 +21,7 @@ const dismissed = ref(localStorage.getItem('ledger_due_dismissed') === todayKey)
 
 // Notification tidak ada di whitelist global Vue — jangan pakai di template
 const canEnable = ref(typeof Notification !== 'undefined' && Notification.permission === 'default')
+const enableMsg = ref('')
 
 // Notifikasi browser 1x/hari selama app terbuka
 // ponytail: hanya jalan selama tab/PWA terbuka — push (Phase 3) tutup celah ini
@@ -37,15 +38,35 @@ watch(dueSoon, (list) => {
 }, { immediate: true })
 
 async function enableNotif() {
+  enableMsg.value = ''
   const uid = state.session?.user?.id
   if (uid) {
     try {
-      if (await enablePush(uid)) { canEnable.value = false; return }
-    } catch { /* jatuh ke fallback Notification biasa */ }
+      if (await enablePush(uid)) {
+        enableMsg.value = 'Push aktif ✓'
+        canEnable.value = false
+        return
+      }
+    } catch (e) {
+      console.error('enablePush gagal', e)
+      enableMsg.value = 'Gagal: ' + (e?.message || e)
+      return
+    }
   }
-  const perm = await Notification.requestPermission()
-  canEnable.value = perm === 'default'
-  if (perm === 'granted') localStorage.removeItem('ledger_notif_date')
+  try {
+    const perm = await Notification.requestPermission()
+    canEnable.value = perm === 'default'
+    if (perm === 'granted') {
+      localStorage.removeItem('ledger_notif_date')
+      enableMsg.value = 'Notifikasi aktif ✓'
+    } else if (perm === 'denied') {
+      enableMsg.value = 'Diblokir — izinkan lewat ikon gembok di address bar'
+      canEnable.value = false
+    }
+  } catch (e) {
+    console.error('requestPermission gagal', e)
+    enableMsg.value = 'Gagal: ' + (e?.message || e)
+  }
 }
 
 function dismiss() {
@@ -60,6 +81,7 @@ function dismiss() {
       <strong>Jatuh tempo ≤3 hari</strong>
       <button v-if="canEnable"
         class="due-soon-enable" @click="enableNotif">Aktifkan notifikasi</button>
+      <span v-if="enableMsg" class="due-soon-status">{{ enableMsg }}</span>
       <button class="due-soon-close" @click="dismiss">✕</button>
     </div>
     <ul>

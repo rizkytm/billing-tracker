@@ -27,7 +27,7 @@ export async function enablePush(userId) {
     p256dh: json.keys.p256dh,
     auth: json.keys.auth,
   }, { onConflict: 'endpoint' })
-  if (error) return false
+  if (error) throw new Error('Supabase: ' + error.message) // biar kelihatan di banner
   // penanda supaya notifikasi in-app (tab terbuka) tidak dobel dengan push
   localStorage.setItem('ledger_push_enabled', '1')
   return true

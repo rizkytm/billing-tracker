@@ -798,6 +798,12 @@ input, select {
   padding: 4px;
   cursor: pointer;
 }
+.due-soon-status {
+  color: var(--paper-dim);
+  font-size: 11px;
+  flex: 1;
+  text-align: right;
+}
 .due-soon-banner ul {
   margin: 0;
   padding: 0;
