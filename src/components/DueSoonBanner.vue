@@ -17,7 +17,13 @@ const todayKey = `${_d.getFullYear()}-${String(_d.getMonth() + 1).padStart(2, '0
 
 const dueSoon = computed(() => getDueSoon(props.bills, props.payments))
 
-const dismissed = ref(localStorage.getItem('ledger_due_dismissed') === todayKey)
+// Collapse persist (bukan per-hari) — tap judul untuk buka lagi kapan saja
+const collapsed = ref(localStorage.getItem('ledger_due_collapsed') === '1')
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+  if (collapsed.value) localStorage.setItem('ledger_due_collapsed', '1')
+  else localStorage.removeItem('ledger_due_collapsed')
+}
 
 // Notification tidak ada di whitelist global Vue — jangan pakai di template.
 // Tampil selama push belum subscribe: izin granted pun tombol tetap perlu
@@ -75,26 +81,25 @@ async function enableNotif() {
   }
 }
 
-function dismiss() {
-  localStorage.setItem('ledger_due_dismissed', todayKey)
-  dismissed.value = true
-}
 </script>
 
 <template>
-  <div v-if="dueSoon.length && (!dismissed || canEnable)" class="due-soon-banner">
+  <div v-if="dueSoon.length || canEnable" class="due-soon-banner">
     <div class="due-soon-head">
-      <strong>Jatuh tempo ≤3 hari</strong>
+      <button class="due-soon-title" @click="toggleCollapse">
+        {{ collapsed ? '▸' : '▾' }}
+        {{ dueSoon.length ? 'Jatuh tempo ≤3 hari' : 'Pengingat jatuh tempo' }}
+      </button>
       <button v-if="canEnable"
         class="due-soon-enable" @click="enableNotif">Aktifkan notifikasi</button>
       <span v-if="enableMsg" class="due-soon-status">{{ enableMsg }}</span>
-      <button class="due-soon-close" @click="dismiss">✕</button>
     </div>
-    <ul v-if="!dismissed">
+    <ul v-if="dueSoon.length && !collapsed">
       <li v-for="item in dueSoon" :key="item.bill.id">
         {{ item.payment?.name_override || item.bill.name }}
         · tgl {{ item.dueDay }}
-        <span v-if="item.dayDiff === 0"> (hari ini)</span>
+        <span v-if="item.dayDiff < 0"> (telat {{ -item.dayDiff }} hari)</span>
+        <span v-else-if="item.dayDiff === 0"> (hari ini)</span>
         <span v-else-if="item.dayDiff === 1"> (besok)</span>
         <span v-else> (+{{ item.dayDiff }} hari)</span>
         · {{ formatRupiah(item.payment?.amount ?? item.bill.amount) }}

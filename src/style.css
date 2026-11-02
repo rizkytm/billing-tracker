@@ -781,7 +781,17 @@ input, select {
   color: var(--warn);
   margin-bottom: 6px;
 }
-.due-soon-head strong { flex: 1; }
+.due-soon-title {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  color: var(--warn);
+  cursor: pointer;
+}
 .due-soon-enable {
   background: none;
   border: 1px solid var(--warn);
@@ -789,13 +799,6 @@ input, select {
   border-radius: 6px;
   padding: 3px 8px;
   font-size: 11px;
-  cursor: pointer;
-}
-.due-soon-close {
-  background: none;
-  border: none;
-  color: var(--paper-dim);
-  padding: 4px;
   cursor: pointer;
 }
 .due-soon-status {

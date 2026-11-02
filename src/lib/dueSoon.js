@@ -14,7 +14,8 @@ export function getDueSoon(bills, payments, today = new Date()) {
     const dd = payment?.due_day_override || bill.due_day
     if (!dd) continue
     const dayDiff = dd - todayDay
-    if (dayDiff < 0 || dayDiff > 3) continue
+    // telat (diff < 0) ikut serta — pengingat sampai dibayar
+    if (dayDiff > 3) continue
     out.push({ bill, payment, dayDiff, dueDay: dd })
   }
   return out.sort((a, b) => a.dueDay - b.dueDay)

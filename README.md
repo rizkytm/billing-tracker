@@ -17,7 +17,7 @@ Vue 3 + Supabase. PWA, deploy gratis di GitHub Pages.
 - Input tanggal gajian berikutnya → estimasi tagihan s.d. gajian + sisa uang saat gajian. Tagihan tanpa tanggal jatuh tempo tidak dihitung (diasumsikan fleksibel).
 - Riwayat bulan-bulan sebelumnya dengan progress bar persentase bayar.
 - Login pakai email/password atau Google OAuth.
-- Notifikasi jatuh tempo H-3: banner di dashboard, notifikasi browser saat app terbuka, dan Web Push harian walau app tertutup.
+- Notifikasi pengingat tagihan: banner (termasuk yang sudah telat) di dashboard, notifikasi browser saat app terbuka, dan Web Push harian walau app tertutup.
 - PWA — bisa diinstall di HP/desktop, cek update otomatis.
 
 ## 1. Setup Supabase
@@ -74,9 +74,9 @@ npm run dev
 
 ## 4. Notifikasi (push)
 
-Tiga lapis, semua pakai logika H-3 yang sama (`src/lib/dueSoon.js`): tagihan aktif, belum bayar, jatuh tempo hari ini s/d +3 hari.
+Tiga lapis, semua pakai logika yang sama (`src/lib/dueSoon.js`): tagihan aktif, belum bayar, jatuh tempo dari yang sudah telat s/d +3 hari ke depan.
 
-1. **Banner** di dashboard — daftar jatuh tempo ≤3 hari, bisa di-dismiss per-hari.
+1. **Banner** di dashboard — daftar tagihan telat/jatuh tempo ≤3 hari. Judul berfungsi toggle collapse (state persist, tap judul untuk buka lagi). Banner juga tampil mode ringkas ("Pengingat jatuh tempo" + tombol aktifkan) selama push belum subscribe walau tidak ada item.
 2. **Notifikasi browser** saat app/tab terbuka — otomatis 1x/hari, mati sendiri kalau push aktif (anti-dobel).
 3. **Web Push** harian 07:00 WIB — jalan walau app tertutup, dikirim Edge Function `notify-due` yang dipanggil GitHub Actions (`notify-due.yml`, cron `0 0 * * *` UTC).
 
@@ -104,7 +104,8 @@ Aktifkan lewat tombol **"Aktifkan notifikasi"** di banner (izin browser + subscr
 - Test manual kirim: Actions → **Notify due bills** → *Run workflow*, atau
   `curl -X POST -H 'Content-Type: application/json' -d '{}' https://YOUR_REF.supabase.co/functions/v1/notify-due`
 - Kirim ulang di hari yang sama: set `last_sent_date` = NULL di `push_subscriptions` (dedup 1x/hari).
-- Tombol tidak muncul: tidak ada tagihan H-3 (banner + tombol hanya tampil saat ada item), permission `denied` (reset lewat setelan situs Chrome), atau push sudah subscribe.
+- Tombol tidak muncul: push sudah subscribe, atau permission `denied` (reset lewat setelan situs Chrome). Banner tampil walau tanpa item selama push belum subscribe.
+- Tagihan telat (lewat jatuh tempo, belum bayar) ikut muncul di banner dan push — tiap hari sampai ditandai lunas/dinonaktifkan.
 - Error subscribe tampil di banner + console. VAPID key harus murni base64url — kalau aneh, cek isi bundle (`applicationServerKey`) dan nilai secret GH.
 
 ## Struktur data (Supabase)

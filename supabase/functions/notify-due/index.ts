@@ -40,9 +40,10 @@ Deno.serve(async () => {
     const dd = r.due_day_override || bill.due_day
     if (!dd) continue
     const diff = dd - todayDay
-    if (diff < 0 || diff > 3) continue
+    if (diff > 3) continue // telat (diff < 0) ikut — pengingat sampai dibayar
     const name = r.name_override || (r.bills as unknown as { name: string }).name
-    const label = `${name} (tgl ${dd}, Rp${Number(r.amount).toLocaleString('id-ID')})`
+    const late = diff < 0 ? `telat ${-diff} hari, ` : ''
+    const label = `${name} (${late}tgl ${dd}, Rp${Number(r.amount).toLocaleString('id-ID')})`
     const list = byUser.get(r.user_id) ?? []
     list.push(label)
     byUser.set(r.user_id, list)
