@@ -17,6 +17,7 @@ Vue 3 + Supabase. PWA, deploy gratis di GitHub Pages.
 - Input tanggal gajian berikutnya → estimasi tagihan s.d. gajian + sisa uang saat gajian. Tagihan tanpa tanggal jatuh tempo tidak dihitung (diasumsikan fleksibel).
 - Riwayat bulan-bulan sebelumnya dengan progress bar persentase bayar.
 - Login pakai email/password atau Google OAuth.
+- Notifikasi jatuh tempo H-3: banner di dashboard, notifikasi browser saat app terbuka, dan Web Push harian walau app tertutup.
 - PWA — bisa diinstall di HP/desktop, cek update otomatis.
 
 ## 1. Setup Supabase
@@ -68,13 +69,50 @@ npm run dev
 4. **Settings → Secrets and variables → Actions** → tambahkan:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_VAPID_PUBLIC_KEY` (untuk push notification, lihat bagian Notifikasi)
 5. Push ke `main` → auto build & deploy.
+
+## 4. Notifikasi (push)
+
+Tiga lapis, semua pakai logika H-3 yang sama (`src/lib/dueSoon.js`): tagihan aktif, belum bayar, jatuh tempo hari ini s/d +3 hari.
+
+1. **Banner** di dashboard — daftar jatuh tempo ≤3 hari, bisa di-dismiss per-hari.
+2. **Notifikasi browser** saat app/tab terbuka — otomatis 1x/hari, mati sendiri kalau push aktif (anti-dobel).
+3. **Web Push** harian 07:00 WIB — jalan walau app tertutup, dikirim Edge Function `notify-due` yang dipanggil GitHub Actions (`notify-due.yml`, cron `0 0 * * *` UTC).
+
+### Setup fresh install
+
+```bash
+# 1. Generate VAPID keys
+npx web-push generate-vapid-keys
+# -> publik ke .env.local sebagai VITE_VAPID_PUBLIC_KEY
+# -> publik + privat ke Supabase secrets:
+supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:you@example.com
+
+# 2. DB + function
+supabase db push                      # tabel push_subscriptions + jadwal cron (opsional)
+supabase functions deploy notify-due  # --use-api kalau Docker kena rate limit
+
+# 3. Secret GitHub (build)
+gh secret set VITE_VAPID_PUBLIC_KEY   # pipe via printf, jangan echo -n
+```
+
+Aktifkan lewat tombol **"Aktifkan notifikasi"** di banner (izin browser + subscribe push sekaligus). Langganan tersimpan di `push_subscriptions`.
+
+### Test & troubleshooting
+
+- Test manual kirim: Actions → **Notify due bills** → *Run workflow*, atau
+  `curl -X POST -H 'Content-Type: application/json' -d '{}' https://YOUR_REF.supabase.co/functions/v1/notify-due`
+- Kirim ulang di hari yang sama: set `last_sent_date` = NULL di `push_subscriptions` (dedup 1x/hari).
+- Tombol tidak muncul: tidak ada tagihan H-3 (banner + tombol hanya tampil saat ada item), permission `denied` (reset lewat setelan situs Chrome), atau push sudah subscribe.
+- Error subscribe tampil di banner + console. VAPID key harus murni base64url — kalau aneh, cek isi bundle (`applicationServerKey`) dan nilai secret GH.
 
 ## Struktur data (Supabase)
 
 - `bills` — definisi tagihan (nama, nominal, tanggal opsional, rutin/tidak, `archived`).
 - `bill_payments` — status per bulan per tagihan (`is_paid`, `is_active` untuk skip bulan ini; `amount`, `name_override`, `due_day_override` untuk override per bulan).
 - `monthly_balance` — sisa uang yang kamu input per bulan, untuk kalkulasi estimasi.
+- `push_subscriptions` — langganan Web Push per user (`endpoint` unik, kunci `p256dh`/`auth`, `last_sent_date` untuk dedup harian).
 
 ## Roadmap
 
