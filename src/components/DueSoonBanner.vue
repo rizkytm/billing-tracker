@@ -19,6 +19,9 @@ const dueSoon = computed(() => getDueSoon(props.bills, props.payments))
 
 const dismissed = ref(localStorage.getItem('ledger_due_dismissed') === todayKey)
 
+// Notification tidak ada di whitelist global Vue — jangan pakai di template
+const canEnable = ref(typeof Notification !== 'undefined' && Notification.permission === 'default')
+
 // Notifikasi browser 1x/hari selama app terbuka
 // ponytail: hanya jalan selama tab/PWA terbuka — push (Phase 3) tutup celah ini
 watch(dueSoon, (list) => {
@@ -35,8 +38,13 @@ watch(dueSoon, (list) => {
 
 async function enableNotif() {
   const uid = state.session?.user?.id
-  if (uid && await enablePush(uid)) return
+  if (uid) {
+    try {
+      if (await enablePush(uid)) { canEnable.value = false; return }
+    } catch { /* jatuh ke fallback Notification biasa */ }
+  }
   const perm = await Notification.requestPermission()
+  canEnable.value = perm === 'default'
   if (perm === 'granted') localStorage.removeItem('ledger_notif_date')
 }
 
@@ -50,7 +58,7 @@ function dismiss() {
   <div v-if="dueSoon.length && !dismissed" class="due-soon-banner">
     <div class="due-soon-head">
       <strong>Jatuh tempo ≤3 hari</strong>
-      <button v-if="typeof Notification !== 'undefined' && Notification.permission === 'default'"
+      <button v-if="canEnable"
         class="due-soon-enable" @click="enableNotif">Aktifkan notifikasi</button>
       <button class="due-soon-close" @click="dismiss">✕</button>
     </div>
