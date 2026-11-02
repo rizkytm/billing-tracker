@@ -78,7 +78,7 @@ Tiga lapis, semua pakai logika yang sama (`src/lib/dueSoon.js`): tagihan aktif, 
 
 1. **Banner** di dashboard — daftar tagihan telat/jatuh tempo ≤3 hari. Judul berfungsi toggle collapse (state persist, tap judul untuk buka lagi). Banner juga tampil mode ringkas ("Pengingat jatuh tempo" + tombol aktifkan) selama push belum subscribe walau tidak ada item.
 2. **Notifikasi browser** saat app/tab terbuka — otomatis 1x/hari, mati sendiri kalau push aktif (anti-dobel).
-3. **Web Push** harian 07:00 WIB — jalan walau app tertutup, dikirim Edge Function `notify-due` yang dipanggil GitHub Actions (`notify-due.yml`, cron `0 0 * * *` UTC).
+3. **Web Push** harian 07:00 WIB — jalan walau app tertutup, dikirim Edge Function `notify-due` yang dipanggil GitHub Actions (`notify-due.yml`, cron `0 0 * * *` UTC). pg_cron & vault tidak tersedia di project ini, jadi jadwal pindah ke Actions. Function `verify_jwt = false` — idempoten + dedup harian, aman dipanggil tanpa auth. Catatan: scheduled workflow GitHub bisa nonaktif sendiri di repo privat setelah 60 hari tanpa aktivitas.
 
 ### Setup fresh install
 
@@ -107,6 +107,7 @@ Aktifkan lewat tombol **"Aktifkan notifikasi"** di banner (izin browser + subscr
 - Tombol tidak muncul: push sudah subscribe, atau permission `denied` — banner menampilkan petunjuk pulih (setelan situs → Notifikasi → Izinkan → muat ulang). Banner tampil walau tanpa item selama push belum subscribe. Flag `ledger_push_enabled` dibersihkan otomatis kalau subscription sudah mati (mis. izin di-revoke).
 - Tagihan telat (lewat jatuh tempo, belum bayar) ikut muncul di banner dan push — tiap hari sampai ditandai lunas/dinonaktifkan.
 - Error subscribe tampil di banner + console. VAPID key harus murni base64url — kalau aneh, cek isi bundle (`applicationServerKey`) dan nilai secret GH.
+- Kunci debug di localStorage: `ledger_push_enabled` (sudah subscribe), `ledger_due_collapsed` (banner dilipat — hapus untuk buka), `ledger_notif_date` (notifikasi in-app hari ini), `ledger_due_dismissed` (lama, sudah tidak dipakai).
 
 ## Struktur data (Supabase)
 
