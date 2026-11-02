@@ -19,8 +19,14 @@ const dueSoon = computed(() => getDueSoon(props.bills, props.payments))
 
 const dismissed = ref(localStorage.getItem('ledger_due_dismissed') === todayKey)
 
-// Notification tidak ada di whitelist global Vue — jangan pakai di template
-const canEnable = ref(typeof Notification !== 'undefined' && Notification.permission === 'default')
+// Notification tidak ada di whitelist global Vue — jangan pakai di template.
+// Tampil selama push belum subscribe: izin granted pun tombol tetap perlu
+// (subscribe = proses terpisah dari permission)
+const canEnable = ref(
+  typeof Notification !== 'undefined' &&
+  Notification.permission !== 'denied' &&
+  !localStorage.getItem('ledger_push_enabled'),
+)
 const enableMsg = ref('')
 
 // Notifikasi browser 1x/hari selama app terbuka
@@ -76,7 +82,7 @@ function dismiss() {
 </script>
 
 <template>
-  <div v-if="dueSoon.length && !dismissed" class="due-soon-banner">
+  <div v-if="dueSoon.length && (!dismissed || canEnable)" class="due-soon-banner">
     <div class="due-soon-head">
       <strong>Jatuh tempo ≤3 hari</strong>
       <button v-if="canEnable"
@@ -84,7 +90,7 @@ function dismiss() {
       <span v-if="enableMsg" class="due-soon-status">{{ enableMsg }}</span>
       <button class="due-soon-close" @click="dismiss">✕</button>
     </div>
-    <ul>
+    <ul v-if="!dismissed">
       <li v-for="item in dueSoon" :key="item.bill.id">
         {{ item.payment?.name_override || item.bill.name }}
         · tgl {{ item.dueDay }}
